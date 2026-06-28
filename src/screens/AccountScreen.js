@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import CustomAlert from "../components/CustomAlert";
 
 // ─── Menu Items ────────────────────────────────────────────────────
 const MENU_ITEMS = [
@@ -57,9 +59,12 @@ const ImpactStat = ({ value, label, showDivider }) => (
 );
 
 // ─── Main AccountScreen ────────────────────────────────────────────
-export default function AccountScreen({ navigation }) {
+export default function AccountScreen() {
+  const navigation = useNavigation();
+  const [logoutAlertVisible, setLogoutAlertVisible] = useState(false);
+
   const handleLogout = () => {
-    // handle logout
+    setLogoutAlertVisible(true);
   };
 
   return (
@@ -155,6 +160,19 @@ export default function AccountScreen({ navigation }) {
           <Ionicons name="log-out-outline" size={20} color="#5C1A1A" />
           <Text style={styles.logoutText}>Keluar</Text>
         </TouchableOpacity>
+
+        <CustomAlert
+          visible={logoutAlertVisible}
+          title="Konfirmasi Logout"
+          message="Apakah Anda yakin ingin keluar?"
+          onCancel={() => setLogoutAlertVisible(false)}
+          onConfirm={() => {
+            setLogoutAlertVisible(false);
+            navigation.navigate("Login");
+          }}
+          cancelText="Batal"
+          confirmText="Keluar"
+        />
 
         {/* Spacer tab bar */}
         <View style={{ height: 100 }} />

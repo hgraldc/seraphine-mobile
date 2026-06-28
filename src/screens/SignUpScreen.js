@@ -11,46 +11,43 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import axiosInstance from '../services/api';
 
 const MAROON = '#8B1A1A';
 
-export default function LoginScreen() {
+export default function SignUpScreen() {
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [alertVisible, setAlertVisible] = useState(false);
-
-  const handleSignIn = async () => {
-    // try {
-    //   const response = await axiosInstance.post('/auth/login', { email, password });
-    //   console.log('Login berhasil:', response.data);
-    //   navigation.navigate('MainTabs');
-    // } catch (error) {
-    //   console.error('Login gagal:', error);
-    //   setAlertVisible(true);
-    // }
-
-    // Menggunakan akun dummy sementara
-    if (email === 'dummy@email.com' && password === 'dummy123') {
-      console.log('Login dummy berhasil');
-      navigation.navigate('MainTabs');
-    } else {
-      console.error('Login gagal: Kredensial salah');
-      setAlertVisible(true);
-    }
-  };
-
-  const handleGoogleSignIn = () => {
-    console.log('Sign in dengan Google');
-  };
-
-  const handleFacebookSignIn = () => {
-    console.log('Sign in dengan Facebook');
-  };
+  const [alertMessage, setAlertMessage] = useState('');
 
   const handleSignUp = () => {
-    navigation.navigate('SignUp');
+    if (!email || !password || !confirmPassword) {
+      setAlertMessage('Harap isi semua kolom.');
+      setAlertVisible(true);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAlertMessage('Password tidak cocok.');
+      setAlertVisible(true);
+      return;
+    }
+    console.log('Sign Up berhasil:', { email });
+    // Navigate to Login after successful registration
+    navigation.navigate('Login');
+  };
+
+  const handleGoogleSignUp = () => {
+    console.log('Sign up dengan Google');
+  };
+
+  const handleFacebookSignUp = () => {
+    console.log('Sign up dengan Facebook');
+  };
+
+  const handleSignIn = () => {
+    navigation.navigate('Login');
   };
 
   return (
@@ -63,8 +60,8 @@ export default function LoginScreen() {
           <Text style={styles.titleText}>CD Seraphine Weetabula</Text>
         </View>
 
-        {/* Heading Login */}
-        <Text style={styles.loginHeading}>Login to your Account</Text>
+        {/* Heading */}
+        <Text style={styles.heading}>Create your Account</Text>
 
         {/* Input Email */}
         <View style={styles.inputWrapper}>
@@ -91,23 +88,35 @@ export default function LoginScreen() {
           />
         </View>
 
-        {/* Tombol Sign In */}
+        {/* Input Confirm Password */}
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            placeholderTextColor="rgba(139,26,26,0.5)"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+          />
+        </View>
+
+        {/* Tombol Sign Up */}
         <TouchableOpacity
-          style={styles.signInButton}
-          onPress={handleSignIn}
+          style={styles.signUpButton}
+          onPress={handleSignUp}
           activeOpacity={0.85}
         >
-          <Text style={styles.signInButtonText}>Sign In</Text>
+          <Text style={styles.signUpButtonText}>Sign up</Text>
         </TouchableOpacity>
 
-        {/* Atau Sign In Dengan */}
-        <Text style={styles.orText}>Or Sign In With</Text>
+        {/* Atau Sign Up Dengan */}
+        <Text style={styles.orText}>Or Sign up With</Text>
 
         {/* Tombol Sosial Media */}
         <View style={styles.socialRow}>
           <TouchableOpacity
             style={styles.socialButton}
-            onPress={handleGoogleSignIn}
+            onPress={handleGoogleSignUp}
             activeOpacity={0.7}
           >
             <Icon name="google" size={26} color="#DB4437" />
@@ -115,28 +124,28 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={styles.socialButton}
-            onPress={handleFacebookSignIn}
+            onPress={handleFacebookSignUp}
             activeOpacity={0.7}
           >
             <Icon name="facebook-square" size={30} color="#3b5998" />
           </TouchableOpacity>
         </View>
 
-        {/* Link Sign Up */}
+        {/* Link Sign In */}
         <TouchableOpacity
-          style={styles.signUpWrapper}
-          onPress={handleSignUp}
+          style={styles.signInWrapper}
+          onPress={handleSignIn}
           activeOpacity={0.7}
         >
-          <Text style={styles.signUpText}>
-            Don&apos;t have an account? Sign Up
+          <Text style={styles.signInText}>
+            Already have an account? Sign In
           </Text>
         </TouchableOpacity>
 
         <CustomAlert
           visible={alertVisible}
-          title="Login Gagal"
-          message="Email atau password salah."
+          title="Sign Up Gagal"
+          message={alertMessage}
           onConfirm={() => setAlertVisible(false)}
           confirmText="Tutup"
         />
@@ -165,7 +174,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 26,
   },
-  loginHeading: {
+  heading: {
     marginTop: 70,
     marginBottom: 24,
     fontSize: 20,
@@ -185,14 +194,13 @@ const styles = StyleSheet.create({
     color: MAROON,
     backgroundColor: '#FFFFFF',
     fontFamily: 'Playfair',
-    // bayangan tipis seperti pada desain
     shadowColor: MAROON,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.35,
     shadowRadius: 0,
     elevation: 3,
   },
-  signInButton: {
+  signUpButton: {
     backgroundColor: MAROON,
     height: 52,
     borderRadius: 8,
@@ -205,7 +213,7 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 4,
   },
-  signInButtonText: {
+  signUpButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     letterSpacing: 0.5,
@@ -232,12 +240,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  signUpWrapper: {
+  signInWrapper: {
     marginTop: 'auto',
     marginBottom: 60,
     alignItems: 'center',
   },
-  signUpText: {
+  signInText: {
     color: MAROON,
     fontSize: 14,
     fontFamily: 'Playfair',

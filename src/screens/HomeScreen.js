@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search } from "lucide-react-native";
+import { useNavigation } from "@react-navigation/native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PRODUCT_CARD_WIDTH = SCREEN_WIDTH * 0.42;
@@ -87,7 +88,8 @@ const formatRupiah = (amount) =>
 // ── Placeholder warna untuk dummy image ───────────────────────────
 const PLACEHOLDER_COLORS = ["#D4C4B8", "#C8B8A8", "#BFB0A2", "#D8CCBF", "#C2B5A8"];
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen() {
+  const navigation = useNavigation();
   const [activeCategory, setActiveCategory] = useState("Semua");
 
   const filteredProducts =

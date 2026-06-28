@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Bot } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useFormatter } from '../hooks/useFormatter';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -79,7 +81,8 @@ const ProductCard = ({ item, onPress, formatRupiah }) => (
 );
 
 // ─── Main KatalogScreen ────────────────────────────────────────────
-export default function KatalogScreen({ navigation }) {
+export default function KatalogScreen() {
+  const navigation = useNavigation();
   const { formatRupiah } = useFormatter();
   const [activeCategory, setActiveCategory] = useState('Semua');
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -126,7 +129,10 @@ export default function KatalogScreen({ navigation }) {
       {/* Top bar */}
       <View style={styles.topBar}>
         <Text style={styles.brandName}>CD Seraphine</Text>
-        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity 
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={() => navigation.navigate('Notification')}
+        >
           <Ionicons name="notifications-outline" size={22} color="#2C0A0A" />
         </TouchableOpacity>
       </View>
@@ -190,13 +196,13 @@ export default function KatalogScreen({ navigation }) {
         <View style={{ height: 100 }} />
       </Animated.ScrollView>
 
-      {/* Floating Cart Button */}
+      {/* Floating AI Button */}
       <TouchableOpacity
-        style={styles.floatingCart}
-        onPress={() => navigation?.navigate('Cart')}
+        style={styles.floatingAiButton}
+        onPress={() => navigation.navigate('Chatbot')}
         activeOpacity={0.85}
       >
-        <Ionicons name="bag-outline" size={22} color="#FAFAF7" />
+        <Bot size={30} color="#FAFAF7" strokeWidth={2} />
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -355,20 +361,20 @@ const styles = StyleSheet.create({
     color: '#9B8A85',
   },
 
-  // Floating cart
-  floatingCart: {
+  // Floating AI Button
+  floatingAiButton: {
     position: 'absolute',
-    bottom: 16,
+    bottom: 90,
     right: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
     backgroundColor: '#5C1A1A',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#5C1A1A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 6,
   },

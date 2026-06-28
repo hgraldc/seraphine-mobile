@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useFormatter } from '../hooks/useFormatter';
 
 const TAB_BAR_HEIGHT = 70;
@@ -88,7 +89,8 @@ const CartItem = ({ item, onIncrease, onDecrease, onRemove, formatRupiah }) => (
 );
 
 
-export default function CartScreen({ navigation }) {
+export default function CartScreen() {
+  const navigation = useNavigation();
   const { formatRupiah } = useFormatter();
   const [cartItems, setCartItems] = useState(INITIAL_CART);
   const insets = useSafeAreaInsets();
@@ -122,7 +124,9 @@ export default function CartScreen({ navigation }) {
         <StatusBar barStyle="dark-content" backgroundColor="#FAFAF7" />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Keranjang Belanja</Text>
-          <View style={{ width: 22 }} />
+          <TouchableOpacity onPress={() => navigation.navigate('Notification')} hitSlop={{top:10, bottom:10, left:10, right:10}}>
+            <Ionicons name="notifications-outline" size={24} color="#5C1A1A" />
+          </TouchableOpacity>
         </View>
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconWrapper}>
@@ -151,7 +155,12 @@ export default function CartScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Keranjang Belanja</Text>
-        <Text style={styles.headerCount}>{cartItems.length} item</Text>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 16}}>
+          <Text style={styles.headerCount}>{cartItems.length} item</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Notification')} hitSlop={{top:10, bottom:10, left:10, right:10}}>
+            <Ionicons name="notifications-outline" size={24} color="#5C1A1A" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ScrollView mengisi sisa ruang di antara header dan checkout */}
