@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,60 +8,24 @@ import {
   Image,
   StatusBar,
   Dimensions,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search } from "lucide-react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { categoryService } from "../services/categoryService";
+import { productService } from "../services/productService";
+import { userService } from "../services/userService";
+import { articleService } from "../services/articleService";
+import { useFormatter } from "../hooks/useFormatter";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Skeleton from "../components/Skeleton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PRODUCT_CARD_WIDTH = SCREEN_WIDTH * 0.42;
 const BLOG_CARD_WIDTH = SCREEN_WIDTH * 0.58;
 
-const CATEGORIES = ["Semua", "Kain", "Tas", "Aksesoris"];
 
-// ── Dummy Products ─────────────────────────────────────────────────
-const DUMMY_PRODUCTS = [
-  {
-    id: "1",
-    nama_produk: "Kain Pahikung Sumba - Motif Kuda",
-    harga: 2500000,
-    kategori: "Kain",
-    badge: true,
-    gambar: null,
-  },
-  {
-    id: "2",
-    nama_produk: "Tas Selempang Tenun Hinggi",
-    harga: 850000,
-    kategori: "Tas",
-    badge: false,
-    gambar: null,
-  },
-  {
-    id: "3",
-    nama_produk: "Kain Hinggi Sumba Klasik",
-    harga: 3200000,
-    kategori: "Kain",
-    badge: true,
-    gambar: null,
-  },
-  {
-    id: "4",
-    nama_produk: "Dompet Tenun Motif Sekong",
-    harga: 350000,
-    kategori: "Aksesoris",
-    badge: false,
-    gambar: null,
-  },
-  {
-    id: "5",
-    nama_produk: "Gelang Benang Emas Sumba",
-    harga: 180000,
-    kategori: "Aksesoris",
-    badge: false,
-    gambar: null,
-  },
-];
 
 // ── Dummy Blogs ────────────────────────────────────────────────────
 const DUMMY_BLOGS = [
@@ -82,20 +46,119 @@ const DUMMY_BLOGS = [
   },
 ];
 
-const formatRupiah = (amount) =>
-  "Rp " + Number(amount).toLocaleString("id-ID");
-
 // ── Placeholder warna untuk dummy image ───────────────────────────
 const PLACEHOLDER_COLORS = ["#D4C4B8", "#C8B8A8", "#BFB0A2", "#D8CCBF", "#C2B5A8"];
 
+function ProductSkeleton() {
+  return (
+    <View style={styles.productCard}>
+      <Skeleton width="100%" height={200} borderRadius={8} />
+      <View style={{ marginTop: 12 }}>
+        <Skeleton width="90%" height={16} />
+        <Skeleton width="60%" height={16} style={{ marginTop: 4 }} />
+        <Skeleton width="50%" height={14} style={{ marginTop: 8 }} />
+      </View>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const [activeCategory, setActiveCategory] = useState("Semua");
+  const { formatRupiah } = useFormatter();
+  
+  const [activeCategoryId, setActiveCategoryId] = useState("semua");
+  const [categories, setCategories] = useState([{ id_kategori: "semua", nama_kategori: "Semua" }]);
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  
+  const [articles, setArticles] = useState([]);
+  const [loadingArticles, setLoadingArticles] = useState(true);
+  
+  const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState("Guest");
 
-  const filteredProducts =
-    activeCategory === "Semua"
-      ? DUMMY_PRODUCTS
-      : DUMMY_PRODUCTS.filter((p) => p.kategori === activeCategory);
+  const fetchProfile = async () => {
+    try {
+      const cachedUser = await AsyncStorage.getItem("userInfo");
+      if (cachedUser) {
+        const parsed = JSON.parse(cachedUser);
+        if (parsed.nama_lengkap) {
+          setUserName(parsed.nama_lengkap.split(" ")[0]);
+        }
+      }
+      const res = await userService.getProfile();
+      if (res.success && res.data) {
+        setUserName(res.data.nama_lengkap.split(" ")[0]);
+        await AsyncStorage.setItem("userInfo", JSON.stringify(res.data));
+      }
+    } catch (error) {
+      console.error("Gagal memuat profil di Home:", error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await categoryService.getAllCategories();
+      if (response.success && response.data) {
+        setCategories([{ id_kategori: "semua", nama_kategori: "Semua" }, ...response.data]);
+      }
+    } catch (error) {
+      console.error("Gagal memuat kategori:", error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      const params = { limit: 10, page: 1 };
+      if (activeCategoryId !== "semua") {
+        params.id_kategori = activeCategoryId;
+      }
+      const response = await productService.getProducts(params);
+      if (response.success && response.data) {
+        setProducts(response.data);
+      }
+    } catch (error) {
+      console.error("Gagal memuat produk:", error);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const fetchArticles = async () => {
+    try {
+      setLoadingArticles(true);
+      const response = await articleService.getArticles();
+      if (response.success && response.data) {
+        setArticles(response.data);
+      }
+    } catch (error) {
+      console.error("Gagal memuat artikel:", error);
+    } finally {
+      setLoadingArticles(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
+
+  useEffect(() => {
+    fetchCategories();
+    fetchArticles();
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [activeCategoryId]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchProfile(), fetchCategories(), fetchProducts(), fetchArticles()]);
+    setRefreshing(false);
+  }, [activeCategoryId]);
 
   return (
     // edges={['top']} → SafeAreaView hanya handle top safe area
@@ -107,7 +170,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.greeting}>
           Welcome Back,{" "}
-          <Text style={styles.greetingBold}>John</Text>
+          <Text style={styles.greetingBold}>{userName}</Text>
         </Text>
         <TouchableOpacity
           style={styles.iconButton}
@@ -122,6 +185,9 @@ export default function HomeScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#5C1A1A"]} />
+        }
       >
         {/* ── HERO ── */}
         <View style={styles.heroContainer}>
@@ -145,34 +211,42 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Categories</Text>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroll}
-        >
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              onPress={() => setActiveCategory(cat)}
-              style={[
-                styles.categoryChip,
-                activeCategory === cat && styles.categoryChipActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  activeCategory === cat && styles.categoryChipTextActive,
-                ]}
-              >
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScroll}
+          >
+            {categories.map((cat) => {
+              const isActive = activeCategoryId === cat.id_kategori;
+              return (
+                <TouchableOpacity
+                  key={cat.id_kategori.toString()}
+                  style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+                  onPress={() => setActiveCategoryId(cat.id_kategori)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}
+                  >
+                    {cat.nama_kategori}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
 
         {/* ── PRODUCTS ── */}
-        {filteredProducts.length === 0 ? (
+        {loadingProducts ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.productScroll}
+          >
+            {[1, 2, 3].map((key) => (
+              <ProductSkeleton key={key} />
+            ))}
+          </ScrollView>
+        ) : products.length === 0 ? (
           <View style={styles.centered}>
             <Text style={styles.emptyText}>
               Belum ada produk di kategori ini.
@@ -187,9 +261,9 @@ export default function HomeScreen() {
             snapToInterval={PRODUCT_CARD_WIDTH + 14}
             snapToAlignment="start"
           >
-            {filteredProducts.map((item, index) => (
+            {products.map((item, index) => (
               <TouchableOpacity
-                key={item.id}
+                key={item.id_produk.toString()}
                 style={styles.productCard}
                 activeOpacity={0.88}
                 onPress={() => navigation?.navigate("ProductDetail", { product: item })}
@@ -206,9 +280,9 @@ export default function HomeScreen() {
                     <View style={styles.productImagePlaceholder} />
                   )}
                   {/* Badge */}
-                  {item.badge && (
+                  {item.stok > 0 && (
                     <View style={styles.badgeWrapper}>
-                      <Text style={styles.badgeText}>📐 Pilihan Ukuran Kustom</Text>
+                      <Text style={styles.badgeText}>Sisa Stok: {item.stok}</Text>
                     </View>
                   )}
                 </View>
@@ -228,7 +302,7 @@ export default function HomeScreen() {
         {/* ── BLOG ── */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Blog</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('ArticleList')}>
             <Text style={styles.seeAll}>SEE ALL</Text>
           </TouchableOpacity>
         </View>
@@ -241,26 +315,46 @@ export default function HomeScreen() {
           snapToInterval={BLOG_CARD_WIDTH + 14}
           snapToAlignment="start"
         >
-          {DUMMY_BLOGS.map((blog, index) => (
-            <TouchableOpacity key={blog.id} style={styles.blogCard} activeOpacity={0.88}>
-              <View style={[
-                styles.blogImageContainer,
-                { backgroundColor: PLACEHOLDER_COLORS[(index + 2) % PLACEHOLDER_COLORS.length] }
-              ]}>
-                {blog.thumbnail ? (
-                  <Image source={{ uri: blog.thumbnail }} style={styles.blogImage} />
-                ) : (
-                  <View style={styles.blogImagePlaceholder} />
-                )}
+          {loadingArticles ? (
+            [1, 2].map((i) => (
+              <View key={i} style={[styles.blogCard, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F0EBE6' }]}>
+                <View style={styles.blogImageContainer}>
+                  <Skeleton width="100%" height="100%" />
+                </View>
+                <View style={styles.blogInfo}>
+                  <Skeleton width="90%" height={16} style={{ marginBottom: 4 }} />
+                  <Skeleton width="70%" height={16} style={{ marginBottom: 12 }} />
+                  <Skeleton width={100} height={14} />
+                </View>
               </View>
-              <View style={styles.blogInfo}>
-                <Text style={styles.blogTitle}>{blog.judul}</Text>
-                <TouchableOpacity style={styles.blogButton}>
-                  <Text style={styles.blogButtonText}>BACA CERITA MEREKA</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
+            ))
+          ) : (
+            articles.map((blog, index) => (
+              <TouchableOpacity 
+                key={blog.id_artikel} 
+                style={styles.blogCard} 
+                activeOpacity={0.88}
+                onPress={() => navigation.navigate("ArticleDetail", { articleId: blog.id_artikel })}
+              >
+                <View style={[
+                  styles.blogImageContainer,
+                  { backgroundColor: PLACEHOLDER_COLORS[(index + 2) % PLACEHOLDER_COLORS.length] }
+                ]}>
+                  {blog.thumbnail ? (
+                    <Image source={{ uri: blog.thumbnail }} style={styles.blogImage} />
+                  ) : (
+                    <View style={styles.blogImagePlaceholder} />
+                  )}
+                </View>
+                <View style={styles.blogInfo}>
+                  <Text style={styles.blogTitle} numberOfLines={2}>{blog.judul}</Text>
+                  <View style={styles.blogButton}>
+                    <Text style={styles.blogButtonText}>BACA CERITA</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </ScrollView>
       </ScrollView>
     </SafeAreaView>
@@ -273,7 +367,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7F3EE",
   },
 
-  // ── Header — TANPA paddingTop manual, SafeAreaView edges top sudah handle ──
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -303,7 +396,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  // ── Hero ──
   heroContainer: {
     marginHorizontal: 16,
     marginTop: 4,
@@ -354,7 +446,6 @@ const styles = StyleSheet.create({
     fontFamily: "PoppinsSemiBold",
   },
 
-  // ── Section Header ──
   sectionHeader: {
     marginTop: 28,
     marginBottom: 14,
@@ -375,7 +466,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // ── Category ──
   categoryScroll: {
     paddingLeft: 20,
     paddingRight: 10,
@@ -402,7 +492,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
 
-  // ── Products ──
   centered: {
     height: PRODUCT_CARD_WIDTH * 1.5,
     justifyContent: "center",
@@ -476,7 +565,6 @@ const styles = StyleSheet.create({
     fontFamily: "PoppinsMedium",
   },
 
-  // ── Blog ──
   blogScroll: {
     paddingLeft: 20,
     paddingRight: 10,

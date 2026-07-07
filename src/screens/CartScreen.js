@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,116 +7,156 @@ import {
   TouchableOpacity,
   Image,
   StatusBar,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useFormatter } from '../hooks/useFormatter';
+import { cartService } from '../services/cartService';
 
 const TAB_BAR_HEIGHT = 70;
 
-// Dummy Cart Data 
-const INITIAL_CART = [
-  {
-    id: '1',
-    name: 'Kain Pahikung Sumba - Motif Bunga',
-    category: 'Kain',
-    price: 2500000,
-    quantity: 1,
-    size: 'L',
-    image: require('../assets/img/hero.jpeg'),
-  },
-  {
-    id: '2',
-    name: 'Tas Selempang Tenun Hinggi',
-    category: 'Tas',
-    price: 850000,
-    quantity: 2,
-    size: null,
-    image: require('../assets/img/hero.jpeg'),
-  },
-  {
-    id: '3',
-    name: 'Dompet Tenun Motif Sekong',
-    category: 'Aksesori',
-    price: 350000,
-    quantity: 1,
-    size: null,
-    image: require('../assets/img/hero.jpeg'),
-  },
-];
-
-
-const CartItem = ({ item, onIncrease, onDecrease, onRemove, formatRupiah }) => (
-  <View style={styles.cartItemContainer}>
-    <View style={styles.imageWrapper}>
-      <Image source={item.image} style={styles.productImage} resizeMode="cover" />
-    </View>
-    <View style={styles.itemDetails}>
-      <View style={styles.itemHeader}>
-        <Text style={styles.itemCategory}>{item.category}</Text>
-        <TouchableOpacity
-          onPress={() => onRemove(item.id)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="close" size={18} color="#9B9B9B" />
-        </TouchableOpacity>
+const CartItem = ({ item, onIncrease, onDecrease, onRemove, formatRupiah }) => {
+  const imageUrl = item.produk?.gambar ? { uri: item.produk.gambar } : require('../assets/img/hero.jpeg');
+  
+  return (
+    <View style={styles.cartItemContainer}>
+      <View style={styles.imageWrapper}>
+        <Image source={imageUrl} style={styles.productImage} resizeMode="cover" />
       </View>
-      <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-      {item.size && (
-        <View style={styles.sizeTag}>
-          <Text style={styles.sizeText}>Ukuran: {item.size}</Text>
-        </View>
-      )}
-      <View style={styles.itemFooter}>
-        <Text style={styles.itemPrice}>{formatRupiah(item.price)}</Text>
-        <View style={styles.qtyControl}>
+      <View style={styles.itemDetails}>
+        <View style={styles.itemHeader}>
+          <Text style={styles.itemCategory}>{item.produk?.kategori?.nama_kategori || 'Kategori'}</Text>
           <TouchableOpacity
-            style={[styles.qtyBtn, item.quantity <= 1 && styles.qtyBtnDisabled]}
-            onPress={() => onDecrease(item.id)}
-            disabled={item.quantity <= 1}
+            onPress={() => onRemove(item.id_keranjang)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="remove" size={14} color={item.quantity <= 1 ? '#CCC' : '#5C1A1A'} />
+            <Ionicons name="close" size={18} color="#9B9B9B" />
           </TouchableOpacity>
-          <Text style={styles.qtyText}>{item.quantity}</Text>
-          <TouchableOpacity style={styles.qtyBtn} onPress={() => onIncrease(item.id)}>
-            <Ionicons name="add" size={14} color="#5C1A1A" />
-          </TouchableOpacity>
+        </View>
+        <Text style={styles.itemName} numberOfLines={2}>{item.produk?.nama_produk || 'Produk'}</Text>
+        {item.varian && (
+          <View style={styles.sizeTag}>
+            <Text style={styles.sizeText}>{item.varian}</Text>
+          </View>
+        )}
+        <View style={styles.itemFooter}>
+          <Text style={styles.itemPrice}>{formatRupiah(item.produk?.harga || item.harga_snapshot)}</Text>
+          <View style={styles.qtyControl}>
+            <TouchableOpacity
+              style={[styles.qtyBtn, item.jumlah <= 1 && styles.qtyBtnDisabled]}
+              onPress={() => onDecrease(item.id_keranjang, item.jumlah)}
+              disabled={item.jumlah <= 1}
+            >
+              <Ionicons name="remove" size={14} color={item.jumlah <= 1 ? '#CCC' : '#5C1A1A'} />
+            </TouchableOpacity>
+            <Text style={styles.qtyText}>{item.jumlah}</Text>
+            <TouchableOpacity style={styles.qtyBtn} onPress={() => onIncrease(item.id_keranjang, item.jumlah)}>
+              <Ionicons name="add" size={14} color="#5C1A1A" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
-  </View>
-);
+  );
+};
 
 
 export default function CartScreen() {
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const { formatRupiah } = useFormatter();
-  const [cartItems, setCartItems] = useState(INITIAL_CART);
+  const [cartItems, setCartItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
 
   const checkoutBottom = TAB_BAR_HEIGHT + insets.bottom;
   const checkoutWrapperHeight = 80;
 
-  const handleIncrease = (id) =>
-    setCartItems((prev) =>
-      prev.map((item) => item.id === id ? { ...item, quantity: item.quantity + 1 } : item)
-    );
+  const fetchCart = async () => {
+    try {
+      setLoading(true);
+      const res = await cartService.getCart();
+      if (res.success && res.data) {
+        setCartItems(res.data.items || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch cart:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleDecrease = (id) =>
+  useEffect(() => {
+    if (isFocused) {
+      fetchCart();
+    }
+  }, [isFocused]);
+
+  const handleIncrease = async (id, currentJumlah) => {
+    setCartItems((prev) =>
+      prev.map((item) => item.id_keranjang === id ? { ...item, jumlah: currentJumlah + 1 } : item)
+    );
+    try {
+      await cartService.updateCartItem(id, currentJumlah + 1);
+    } catch (error) {
+      Alert.alert('Error', 'Gagal menambah jumlah produk');
+      fetchCart();
+    }
+  };
+
+  const handleDecrease = async (id, currentJumlah) => {
+    if (currentJumlah <= 1) return;
     setCartItems((prev) =>
       prev.map((item) =>
-        item.id === id && item.quantity > 1 ? { ...item, quantity: item.quantity - 1 } : item
+        item.id_keranjang === id ? { ...item, jumlah: currentJumlah - 1 } : item
       )
     );
+    try {
+      await cartService.updateCartItem(id, currentJumlah - 1);
+    } catch (error) {
+      Alert.alert('Error', 'Gagal mengurangi jumlah produk');
+      fetchCart();
+    }
+  };
 
-  const handleRemove = (id) =>
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
+  const handleRemove = (id) => {
+    Alert.alert('Hapus Item', 'Yakin ingin menghapus produk ini dari keranjang?', [
+      { text: 'Batal', style: 'cancel' },
+      {
+        text: 'Hapus',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await cartService.removeCartItem(id);
+            fetchCart();
+          } catch (error) {
+            Alert.alert('Error', 'Gagal menghapus produk');
+          }
+        },
+      },
+    ]);
+  };
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.produk?.harga || item.harga_snapshot) * item.jumlah, 0);
   const shippingCost = subtotal > 0 ? 75000 : 0;
   const total = subtotal + shippingCost;
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FAFAF7" />
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Keranjang Belanja</Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#5C1A1A" />
+        </View>
+      </SafeAreaView>
+    );
+  }
   
   if (cartItems.length === 0) {
     return (
@@ -172,7 +212,7 @@ export default function CartScreen() {
 
         {cartItems.map((item) => (
           <CartItem
-            key={item.id}
+            key={item.id_keranjang}
             item={item}
             onIncrease={handleIncrease}
             onDecrease={handleDecrease}
@@ -216,7 +256,7 @@ export default function CartScreen() {
         <TouchableOpacity
           style={styles.checkoutBtn}
           activeOpacity={0.85}
-          onPress={() => navigation?.navigate('Checkout')}
+          onPress={() => navigation?.navigate('Checkout', { fromCart: true })}
         >
           <Ionicons name="lock-closed-outline" size={16} color="#FAFAF7" />
           <Text style={styles.checkoutBtnText}>Lanjut ke Pembayaran</Text>
@@ -265,7 +305,6 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 
-  // Cart Item
   cartItemContainer: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -345,7 +384,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Promo
   promoSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -376,7 +414,6 @@ const styles = StyleSheet.create({
   },
   promoAddText: { fontFamily: 'PoppinsSemiBold', fontSize: 12, color: '#8B3A3A' },
 
-  // Summary
   summaryContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -430,7 +467,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // Empty State
   emptyContainer: {
     flex: 1,
     alignItems: 'center',

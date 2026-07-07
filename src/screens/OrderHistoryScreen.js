@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,85 +7,68 @@ import {
   TouchableOpacity,
   Image,
   StatusBar,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  RefreshControl
 } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFormatter } from "../hooks/useFormatter";
+import { orderService } from "../services/orderService";
+import CustomAlert from "../components/CustomAlert";
+import Skeleton from "../components/Skeleton";
 
 const TAB_BAR_HEIGHT = 70;
 
-// ─── Status config ─────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  Dikirim: {
+  menunggu: {
+    label: "Menunggu",
+    icon: "time-outline",
+    bg: "#FFF3E0",
+    color: "#E65100",
+  },
+  diproses: {
+    label: "Diproses",
+    icon: "cube-outline",
+    bg: "#FFF8E6",
+    color: "#B07800",
+  },
+  dikirim: {
     label: "Dikirim",
     icon: "car-outline",
     bg: "#EAF0FF",
     color: "#2255CC",
   },
-  Dikemas: {
-    label: "Dikemas",
-    icon: "cube-outline",
-    bg: "#FFF8E6",
-    color: "#B07800",
-  },
-  Selesai: {
+  selesai: {
     label: "Selesai",
     icon: "checkmark-circle-outline",
     bg: "#E8F5E9",
     color: "#2E7D32",
   },
+  batal: {
+    label: "Dibatalkan",
+    icon: "close-circle-outline",
+    bg: "#FFEBEE",
+    color: "#C62828",
+  },
 };
 
-// ─── Dummy Orders ──────────────────────────────────────────────────
-const DUMMY_ORDERS = [
-  {
-    id: "ST-2023-089",
-    date: "12 Oktober 2023",
-    status: "Dikirim",
-    productName: "Pahikung Habaku Motif",
-    meta1: "Artisan: Rambu Kahi",
-    meta2: "Dimensions: 240cm x 120cm",
-    total: 8500000,
-    image: require("../assets/img/hero.jpeg"),
-    actions: ["detail", "track"],
-  },
-  {
-    id: "ST-2023-102",
-    date: "15 Oktober 2023",
-    status: "Dikemas",
-    productName: "Hinggi Kombu Andung",
-    meta1: "Pre-order Custom Sizing",
-    meta2: "Motif: Skull Tree",
-    total: 12000000,
-    image: require("../assets/img/hero.jpeg"),
-    actions: ["detail"],
-  },
-  {
-    id: "ST-2023-014",
-    date: "02 Agustus 2023",
-    status: "Selesai",
-    productName: "Lau Pahudu Kiku",
-    meta1: "Artisan Collection",
-    meta2: "Acquired",
-    total: 6200000,
-    image: require("../assets/img/hero.jpeg"),
-    actions: ["certificate", "rebuy"],
-  },
+const FILTERS = [
+  { id: "semua", label: "Semua" },
+  { id: "menunggu", label: "Menunggu" },
+  { id: "diproses", label: "Diproses" },
+  { id: "dikirim", label: "Dikirim" },
+  { id: "selesai", label: "Selesai" },
+  { id: "batal", label: "Batal" }
 ];
 
-const FILTERS = ["Semua", "Dikemas", "Dikirim", "Selesai"];
-
-const formatRupiahLocal = (amount) =>
-  "Rp " + Number(amount).toLocaleString("id-ID");
-
-// ─── Status Badge ──────────────────────────────────────────────────
 function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status];
-  if (!cfg) return null;
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.menunggu;
   return (
     <View style={[styles.badge, { backgroundColor: cfg.bg }]}>
       <Ionicons name={cfg.icon} size={12} color={cfg.color} />
@@ -94,88 +77,96 @@ function StatusBadge({ status }) {
   );
 }
 
-// ─── Order Card ────────────────────────────────────────────────────
-function OrderCard({ order }) {
+function OrderCard({ order, onCancel, formatRupiah }) {
   const navigation = useNavigation();
+  const firstItem = order.detail_pesanan && order.detail_pesanan.length > 0 ? order.detail_pesanan[0] : null;
 
   return (
     <View style={styles.card}>
       {/* Card Header */}
       <View style={styles.cardHeader}>
         <View>
-          <Text style={styles.orderId}>ID: {order.id}</Text>
-          <Text style={styles.orderDate}>{order.date}</Text>
+          <Text style={styles.orderId}>ID: INV-{order.id_pesanan}</Text>
+          <Text style={styles.orderDate}>
+            {new Date(order.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </Text>
         </View>
-        <StatusBadge status={order.status} />
+        <StatusBadge status={order.status_pesanan} />
       </View>
 
       <View style={styles.cardDivider} />
 
       {/* Product Image */}
-      <View style={styles.productImageWrapper}>
-        <Image
-          source={order.image}
-          style={styles.productImage}
-          resizeMode="cover"
-        />
-      </View>
+      {firstItem && (
+        <>
+          <View style={styles.productImageWrapper}>
+            {firstItem.produk?.gambar ? (
+              <Image
+                source={{ uri: firstItem.produk.gambar }}
+                style={styles.productImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Image
+                source={require("../assets/img/hero.jpeg")}
+                style={styles.productImage}
+                resizeMode="cover"
+              />
+            )}
+          </View>
 
-      {/* Product Info */}
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{order.productName}</Text>
-        <Text style={styles.productMeta}>{order.meta1}</Text>
-        <Text style={styles.productMeta}>{order.meta2}</Text>
-      </View>
+          {/* Product Info */}
+          <View style={styles.productInfo}>
+            <Text style={styles.productName}>{firstItem.produk?.nama_produk || 'Produk Seraphine'}</Text>
+            <Text style={styles.productMeta}>Ukuran: {firstItem.ukuran || '-'}</Text>
+            <Text style={styles.productMeta}>Jumlah: {firstItem.jumlah} pcs</Text>
+            {order.detail_pesanan.length > 1 && (
+              <Text style={[styles.productMeta, { marginTop: 4, color: '#C62828' }]}>
+                + {order.detail_pesanan.length - 1} produk lainnya
+              </Text>
+            )}
+          </View>
+        </>
+      )}
 
       {/* Total */}
       <View style={styles.totalRow}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <Text style={styles.totalValue}>{formatRupiahLocal(order.total)}</Text>
+        <Text style={styles.totalLabel}>Total Belanja</Text>
+        <Text style={styles.totalValue}>{formatRupiah(order.total_harga)}</Text>
       </View>
 
       {/* Action Buttons */}
       <View style={styles.actionsRow}>
-        {order.actions.includes("detail") && (
+        <TouchableOpacity
+          style={styles.btnOutline}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate("OrderDetail", { orderId: order.id_pesanan })}
+        >
+          <Text style={styles.btnOutlineText}>Lihat Detail</Text>
+        </TouchableOpacity>
+
+        {order.status_pesanan === "menunggu" && (
           <TouchableOpacity
-            style={styles.btnOutline}
+            style={styles.btnFilledBatal}
             activeOpacity={0.8}
-            onPress={() =>
-              navigation.navigate("OrderDetail", { orderId: order.id })
-            }
+            onPress={() => onCancel(order.id_pesanan)}
           >
-            <Text style={styles.btnOutlineText}>Lihat Detail</Text>
+            <Text style={styles.btnFilledText}>Batalkan</Text>
           </TouchableOpacity>
         )}
-        {order.actions.includes("track") && (
+
+        {order.status_pesanan === "dikirim" && (
           <TouchableOpacity
-            style={styles.btnFilled}
+            style={styles.btnFilledTrack}
             activeOpacity={0.8}
-            onPress={() =>
-              navigation.navigate("TrackPackage", { orderId: order.id })
-            }
+            onPress={() => navigation.navigate("TrackPackage", { 
+              orderId: order.id_pesanan,
+              productImage: firstItem?.produk?.gambar || null,
+              productName: firstItem?.produk?.nama_produk || 'Produk'
+            })}
           >
             <Ionicons name="navigate-outline" size={14} color="#FAFAF7" />
-            <Text style={styles.btnFilledText}>Lacak Paket</Text>
-          </TouchableOpacity>
-        )}
-        {order.actions.includes("certificate") && (
-          <TouchableOpacity
-            style={styles.btnOutline}
-            activeOpacity={0.8}
-            onPress={() =>
-              navigation.navigate("Certificate", { orderId: order.id })
-            }
-          >
-            <Text style={styles.btnOutlineText}>Sertifikat</Text>
-          </TouchableOpacity>
-        )}
-        {order.actions.includes("rebuy") && (
-          <TouchableOpacity
-            style={styles.btnFilled}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate("Catalog")}
-          >
-            <Text style={styles.btnFilledText}>Beli Lagi</Text>
+            <Text style={styles.btnFilledTrackText}>Lacak Paket</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -183,16 +174,125 @@ function OrderCard({ order }) {
   );
 }
 
-// ─── Main Screen ───────────────────────────────────────────────────
+function OrderSkeleton() {
+  return (
+    <View style={styles.card}>
+      {/* Header Skeleton */}
+      <View style={styles.cardHeader}>
+        <View style={styles.storeInfo}>
+          <Skeleton width={20} height={20} borderRadius={10} />
+          <Skeleton width={100} height={14} style={{ marginLeft: 6 }} />
+        </View>
+        <Skeleton width={60} height={20} borderRadius={10} />
+      </View>
+      <View style={styles.divider} />
+
+      {/* Body Skeleton */}
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Skeleton width={60} height={60} borderRadius={4} />
+        <View style={{ marginLeft: 12, flex: 1, gap: 6 }}>
+          <Skeleton width="80%" height={16} />
+          <Skeleton width="40%" height={12} />
+          <Skeleton width="30%" height={12} />
+        </View>
+      </View>
+
+      {/* Total & Action Skeleton */}
+      <View style={[styles.totalRow, { marginTop: 16 }]}>
+        <Skeleton width={80} height={14} />
+        <Skeleton width={100} height={18} />
+      </View>
+      <View style={styles.actionsRow}>
+        <Skeleton width="100%" height={36} borderRadius={8} />
+      </View>
+    </View>
+  );
+}
+
 export default function OrderHistoryScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [activeFilter, setActiveFilter] = useState("Semua");
+  const { formatRupiah } = useFormatter();
 
-  const filtered =
-    activeFilter === "Semua"
-      ? DUMMY_ORDERS
-      : DUMMY_ORDERS.filter((o) => o.status === activeFilter);
+  const [activeFilter, setActiveFilter] = useState("semua");
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+
+  const fetchOrders = async () => {
+    try {
+      const response = await orderService.getOrders({ page: 1, limit: 10 });
+      if (response.success && response.data) {
+        setOrders(response.data);
+      }
+    } catch (error) {
+      console.error("Gagal memuat pesanan:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const initFetch = async () => {
+        setLoading(true);
+        await fetchOrders();
+        setLoading(false);
+      };
+      initFetch();
+    }, [])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchOrders();
+    setRefreshing(false);
+  };
+
+  const filtered = activeFilter === "semua" 
+    ? orders 
+    : orders.filter((o) => o.status_pesanan === activeFilter);
+
+  const handleCancelPrompt = (orderId) => {
+    setAlertConfig({
+      visible: true,
+      title: 'Batalkan Pesanan?',
+      message: 'Apakah Anda yakin ingin membatalkan pesanan ini? Aksi ini tidak dapat diurungkan.',
+      type: 'confirm',
+      onConfirm: () => confirmCancel(orderId),
+      onCancel: () => setAlertConfig(prev => ({...prev, visible: false}))
+    });
+  };
+
+  const confirmCancel = async (orderId) => {
+    setAlertConfig(prev => ({...prev, visible: false}));
+    setCanceling(true);
+    try {
+      const res = await orderService.cancelOrder(orderId);
+      if (res.success) {
+        setAlertConfig({
+          visible: true,
+          title: 'Berhasil',
+          message: 'Pesanan telah berhasil dibatalkan.',
+          type: 'success',
+          onConfirm: () => {
+            setAlertConfig(prev => ({...prev, visible: false}));
+            fetchOrders();
+          }
+        });
+      }
+    } catch (error) {
+      setAlertConfig({
+        visible: true,
+        title: 'Gagal',
+        message: 'Gagal membatalkan pesanan.',
+        type: 'error',
+        onConfirm: () => setAlertConfig(prev => ({...prev, visible: false}))
+      });
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -219,6 +319,9 @@ export default function OrderHistoryScreen() {
           styles.scrollContent,
           { paddingBottom: insets.bottom + 16 },
         ]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#5C1A1A"]} />
+        }
       >
         {/* Page Title */}
         <Text style={styles.pageTitle}>Riwayat Pesanan</Text>
@@ -234,28 +337,34 @@ export default function OrderHistoryScreen() {
         >
           {FILTERS.map((f) => (
             <TouchableOpacity
-              key={f}
+              key={f.id}
               style={[
                 styles.filterChip,
-                activeFilter === f && styles.filterChipActive,
+                activeFilter === f.id && styles.filterChipActive,
               ]}
-              onPress={() => setActiveFilter(f)}
+              onPress={() => setActiveFilter(f.id)}
               activeOpacity={0.8}
             >
               <Text
                 style={[
                   styles.filterText,
-                  activeFilter === f && styles.filterTextActive,
+                  activeFilter === f.id && styles.filterTextActive,
                 ]}
               >
-                {f}
+                {f.label}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
         {/* Order Cards */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <View style={{ gap: 16 }}>
+            <OrderSkeleton />
+            <OrderSkeleton />
+            <OrderSkeleton />
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="receipt-outline" size={48} color="#C8B8A8" />
             <Text style={styles.emptyText}>
@@ -263,21 +372,38 @@ export default function OrderHistoryScreen() {
             </Text>
           </View>
         ) : (
-          filtered.map((order) => <OrderCard key={order.id} order={order} />)
+          filtered.map((order) => (
+            <OrderCard key={order.id_pesanan} order={order} onCancel={handleCancelPrompt} formatRupiah={formatRupiah} />
+          ))
         )}
       </ScrollView>
+
+      {/* Dim overlay for canceling */}
+      {canceling && (
+        <View style={StyleSheet.absoluteFill}>
+           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' }}>
+             <ActivityIndicator size="large" color="#FFFFFF" />
+           </View>
+        </View>
+      )}
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={alertConfig.onCancel}
+      />
     </SafeAreaView>
   );
 }
 
-// ─── Styles ────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#FAFAF7",
   },
-
-  // Top Bar
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -298,14 +424,10 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
-
-  // Scroll
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 24,
   },
-
-  // Page Title
   pageTitle: {
     fontFamily: "Playfair",
     fontSize: 32,
@@ -320,8 +442,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 20,
   },
-
-  // Filter
   filterScroll: {
     gap: 8,
     paddingBottom: 20,
@@ -347,8 +467,6 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: "#FAFAF7",
   },
-
-  // Card
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -384,8 +502,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0E8E2",
     marginHorizontal: 0,
   },
-
-  // Badge
   badge: {
     flexDirection: "row",
     alignItems: "center",
@@ -399,8 +515,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginLeft: 3,
   },
-
-  // Product
   productImageWrapper: {
     width: "100%",
     height: 180,
@@ -428,8 +542,6 @@ const styles = StyleSheet.create({
     color: "#7A6A65",
     lineHeight: 20,
   },
-
-  // Total
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -450,8 +562,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#1A0A0A",
   },
-
-  // Actions
   actionsRow: {
     flexDirection: "row",
     gap: 10,
@@ -472,23 +582,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#2C0A0A",
   },
-  btnFilled: {
+  btnFilledBatal: {
     flex: 1,
     paddingVertical: 11,
     borderRadius: 10,
-    backgroundColor: "#6B0000",
+    backgroundColor: "#FFF",
+    borderWidth: 1.5,
+    borderColor: "#C62828",
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: 6,
   },
   btnFilledText: {
-    fontFamily: "PoppinsSemiBold",
+    fontFamily: 'PoppinsSemiBold',
     fontSize: 13,
-    color: "#FAFAF7",
+    color: '#C62828',
   },
-
-  // Empty
+  btnFilledTrack: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: '#6B0000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  btnFilledTrackText: {
+    fontFamily: 'PoppinsSemiBold',
+    fontSize: 13,
+    color: '#FAFAF7',
+  },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",

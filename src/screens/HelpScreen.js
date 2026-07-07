@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 const TAB_BAR_HEIGHT = 70;
 
-// ─── Kategori Bantuan ──────────────────────────────────────────────
 const HELP_CATEGORIES = [
   {
     id: '1',
@@ -43,7 +42,6 @@ const HELP_CATEGORIES = [
   },
 ];
 
-// ─── FAQ ───────────────────────────────────────────────────────────
 const FAQS = [
   {
     id: '1',
@@ -65,7 +63,6 @@ const FAQS = [
   },
 ];
 
-// ─── FAQ Item ──────────────────────────────────────────────────────
 function FaqItem({ item }) {
   const [open, setOpen] = useState(false);
 
@@ -89,7 +86,6 @@ function FaqItem({ item }) {
   );
 }
 
-// ─── Main HelpScreen ───────────────────────────────────────────────
 export default function HelpScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -200,14 +196,12 @@ export default function HelpScreen() {
   );
 }
 
-// ─── Styles ────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FAFAF7',
   },
 
-  // Top Bar
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -234,7 +228,6 @@ const styles = StyleSheet.create({
     paddingTop: 28,
   },
 
-  // Title
   pageTitle: {
     fontFamily: 'Playfair',
     fontSize: 32,
@@ -252,7 +245,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 
-  // Search
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -273,7 +265,6 @@ const styles = StyleSheet.create({
     padding: 0,
   },
 
-  // Categories
   categoriesContainer: {
     gap: 12,
     marginBottom: 32,
@@ -310,7 +301,6 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  // Section Title
   sectionTitle: {
     fontFamily: 'Playfair',
     fontSize: 22,
@@ -319,7 +309,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // FAQ
   faqContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
@@ -358,7 +347,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0E8E2',
   },
 
-  // Contact Card
   contactCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,

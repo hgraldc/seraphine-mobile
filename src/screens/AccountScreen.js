@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,20 @@ import {
   TouchableOpacity,
   Image,
   StatusBar,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import CustomAlert from "../components/CustomAlert";
+import { userService } from "../services/userService";
+import { authService } from "../services/authService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// ─── Menu Items ────────────────────────────────────────────────────
 const MENU_ITEMS = [
   {
     id: "1",
@@ -47,7 +54,6 @@ const MENU_ITEMS = [
   },
 ];
 
-// ─── Impact Stat ───────────────────────────────────────────────────
 const ImpactStat = ({ value, label, showDivider }) => (
   <>
     <View style={styles.statRow}>
@@ -58,13 +64,112 @@ const ImpactStat = ({ value, label, showDivider }) => (
   </>
 );
 
-// ─── Main AccountScreen ────────────────────────────────────────────
 export default function AccountScreen() {
   const navigation = useNavigation();
   const [logoutAlertVisible, setLogoutAlertVisible] = useState(false);
+  
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editForm, setEditForm] = useState({
+    nama_lengkap: '',
+    no_telepon: '',
+    alamat: '',
+    kota: '',
+    provinsi: '',
+    kode_pos: '',
+  });
+
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState('info');
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      // 1. Ambil dari Cache (Instan, 0 loading time)
+      const cachedUser = await AsyncStorage.getItem("userInfo");
+      if (cachedUser) {
+        setUserData(JSON.parse(cachedUser));
+        setLoading(false); // Hilangkan spinner langsung
+      }
+
+      // 2. Ambil dari API diam-diam
+      if (!cachedUser) setLoading(true);
+      const res = await userService.getProfile();
+      if (res && res.success && res.data) {
+        setUserData(res.data);
+        await AsyncStorage.setItem("userInfo", JSON.stringify(res.data));
+      }
+    } catch (err) {
+      console.log('Error fetching profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenEdit = () => {
+    if (userData) {
+      setEditForm({
+        nama_lengkap: userData?.nama_lengkap || '',
+        no_telepon: userData?.no_telepon || '',
+        alamat: userData?.alamat || '',
+        kota: userData?.kota || '',
+        provinsi: userData?.provinsi || '',
+        kode_pos: userData?.kode_pos || '',
+      });
+      setIsEditModalVisible(true);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const res = await userService.updateProfile(editForm);
+      if (res && res.success) {
+        setIsEditModalVisible(false);
+        setAlertTitle('Berhasil');
+        setAlertMessage(res.message || 'Profil berhasil diperbarui.');
+        setAlertType('success');
+        setAlertVisible(true);
+        // Refresh profile data using the returned data if available, or fetch again
+        if (res.data) {
+          setUserData(res.data);
+          await AsyncStorage.setItem("userInfo", JSON.stringify(res.data));
+        } else {
+          fetchProfile();
+        }
+      } else {
+        setAlertTitle('Gagal');
+        setAlertMessage(res?.message || 'Gagal memperbarui profil.');
+        setAlertType('error');
+        setAlertVisible(true);
+      }
+    } catch (err) {
+      setAlertTitle('Gagal');
+      setAlertMessage('Terjadi kesalahan saat memperbarui profil.');
+      setAlertType('error');
+      setAlertVisible(true);
+    }
+  };
 
   const handleLogout = () => {
     setLogoutAlertVisible(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    setLogoutAlertVisible(false);
+    try {
+      await authService.logout();
+    } catch(e) {}
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
   };
 
   return (
@@ -95,10 +200,19 @@ export default function AccountScreen() {
               resizeMode="cover"
             />
           </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>Ananda Putri</Text>
-            <Text style={styles.profileRole}>Heritage Collector</Text>
+          <View style={[styles.profileInfo, { flex: 1 }]}>
+            {loading ? (
+              <ActivityIndicator size="small" color="#8B1A1A" style={{ alignSelf: 'flex-start' }} />
+            ) : (
+              <>
+                <Text style={styles.profileName} numberOfLines={1}>{userData?.nama_lengkap || 'Pengguna'}</Text>
+                <Text style={styles.profileRole} numberOfLines={1}>{userData?.email || 'Email tidak tersedia'}</Text>
+              </>
+            )}
           </View>
+          <TouchableOpacity onPress={handleOpenEdit} style={styles.editBtn}>
+            <Ionicons name="pencil" size={18} color="#5C1A1A" />
+          </TouchableOpacity>
         </View>
 
         {/* Dampak Sosial Card */}
@@ -161,34 +275,117 @@ export default function AccountScreen() {
           <Text style={styles.logoutText}>Keluar</Text>
         </TouchableOpacity>
 
-        <CustomAlert
-          visible={logoutAlertVisible}
-          title="Konfirmasi Logout"
-          message="Apakah Anda yakin ingin keluar?"
-          onCancel={() => setLogoutAlertVisible(false)}
-          onConfirm={() => {
-            setLogoutAlertVisible(false);
-            navigation.navigate("Login");
-          }}
-          cancelText="Batal"
-          confirmText="Keluar"
-        />
-
         {/* Spacer tab bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Modal Edit Profil */}
+      <Modal visible={isEditModalVisible} animationType="slide" transparent={true} onRequestClose={() => setIsEditModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={styles.modalContainer}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Profil</Text>
+                <TouchableOpacity onPress={() => setIsEditModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#1A0A0A" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Nama Lengkap</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editForm.nama_lengkap}
+                    onChangeText={(val) => setEditForm({...editForm, nama_lengkap: val})}
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>No. Telepon</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="phone-pad"
+                    value={editForm.no_telepon}
+                    onChangeText={(val) => setEditForm({...editForm, no_telepon: val})}
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Alamat</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editForm.alamat}
+                    onChangeText={(val) => setEditForm({...editForm, alamat: val})}
+                  />
+                </View>
+                <View style={styles.rowInputs}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.inputLabel}>Kota</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editForm.kota}
+                      onChangeText={(val) => setEditForm({...editForm, kota: val})}
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                    <Text style={styles.inputLabel}>Provinsi</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editForm.provinsi}
+                      onChangeText={(val) => setEditForm({...editForm, provinsi: val})}
+                    />
+                  </View>
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Kode Pos</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="number-pad"
+                    value={editForm.kode_pos}
+                    onChangeText={(val) => setEditForm({...editForm, kode_pos: val})}
+                  />
+                </View>
+
+                <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile}>
+                  <Text style={styles.saveBtnText}>Simpan Perubahan</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      <CustomAlert
+        visible={logoutAlertVisible}
+        type="confirm"
+        title="Konfirmasi Logout"
+        message="Apakah Anda yakin ingin keluar?"
+        onCancel={() => setLogoutAlertVisible(false)}
+        onConfirm={handleConfirmLogout}
+        cancelText="Batal"
+        confirmText="Keluar"
+      />
+
+      <CustomAlert
+        visible={alertVisible}
+        type={alertType}
+        title={alertTitle}
+        message={alertMessage}
+        onConfirm={() => setAlertVisible(false)}
+        confirmText="Tutup"
+      />
     </SafeAreaView>
   );
 }
 
-// ─── Styles ────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#F5F3EF",
   },
 
-  // Top Bar
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -207,13 +404,11 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
 
-  // Scroll
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 28,
   },
 
-  // Page Title
   pageTitle: {
     fontFamily: "Playfair",
     fontSize: 32,
@@ -222,7 +417,6 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
 
-  // Profile
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -254,8 +448,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#7A6A65",
   },
+  editBtn: {
+    padding: 10,
+    backgroundColor: '#E8DDD4',
+    borderRadius: 20,
+  },
 
-  // Impact Card
   impactCard: {
     backgroundColor: "#6B0000",
     borderRadius: 16,
@@ -301,7 +499,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
   },
 
-  // Menu
   menuContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
@@ -338,7 +535,6 @@ const styles = StyleSheet.create({
     color: "#2C0A0A",
   },
 
-  // Logout
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -351,5 +547,76 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#5C1A1A",
     marginLeft: 4,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    maxHeight: '90%',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontFamily: 'Playfair',
+    fontSize: 22,
+    color: '#1A0A0A',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  rowInputs: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  inputLabel: {
+    fontFamily: 'PoppinsMedium',
+    fontSize: 12,
+    color: '#7A6A65',
+    marginBottom: 8,
+  },
+  input: {
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: '#E2D9D0',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontFamily: 'Poppins',
+    fontSize: 14,
+    color: '#1A0A0A',
+    backgroundColor: '#FAF9F7',
+  },
+  saveBtn: {
+    backgroundColor: '#8B1A1A',
+    height: 52,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 10,
+    shadowColor: '#8B1A1A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  saveBtnText: {
+    fontFamily: 'PoppinsMedium',
+    fontSize: 15,
+    color: '#FFFFFF',
   },
 });

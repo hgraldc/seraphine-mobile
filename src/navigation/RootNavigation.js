@@ -22,7 +22,6 @@ const TABS = [
   { name: "Account", label: "Account", icon: User, component: AccountScreen },
 ];
 
-// ── Custom Tab Bar sepenuhnya — tidak bergantung pada prop React Navigation ──
 function MyTabBar({ state, descriptors, navigation }) {
   return (
     <View style={styles.tabBar}>

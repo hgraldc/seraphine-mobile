@@ -14,6 +14,7 @@ import Animated, {
   ZoomOut,
   runOnJS,
 } from 'react-native-reanimated';
+import { Feather } from '@expo/vector-icons';
 
 const CustomAlert = ({
   visible,
@@ -23,6 +24,7 @@ const CustomAlert = ({
   onConfirm,
   cancelText = "Batal",
   confirmText = "OK",
+  type = "info", // 'success', 'error', 'confirm', 'info'
 }) => {
   const [showModal, setShowModal] = useState(visible);
 
@@ -37,6 +39,19 @@ const CustomAlert = ({
   };
 
   if (!showModal && !visible) return null;
+
+  const renderIcon = () => {
+    switch (type) {
+      case 'success':
+        return <Feather name="check-circle" size={48} color="#28A745" style={styles.icon} />;
+      case 'error':
+        return <Feather name="x-circle" size={48} color="#8B1A1A" style={styles.icon} />;
+      case 'confirm':
+        return <Feather name="help-circle" size={48} color="#E6B325" style={styles.icon} />;
+      default:
+        return <Feather name="info" size={48} color="#8B1A1A" style={styles.icon} />;
+    }
+  };
 
   return (
     <Modal
@@ -60,10 +75,11 @@ const CustomAlert = ({
                 entering={ZoomIn.duration(300).springify()}
                 exiting={ZoomOut.duration(200)}
               >
+                {renderIcon()}
                 {title ? <Text style={styles.title}>{title}</Text> : null}
                 {message ? <Text style={styles.message}>{message}</Text> : null}
                 <View style={styles.buttonContainer}>
-                  {onCancel && (
+                  {(onCancel || type === 'confirm') && (
                     <TouchableOpacity
                       style={[styles.button, styles.cancelButton]}
                       onPress={() => handleClose(onCancel)}
@@ -74,7 +90,7 @@ const CustomAlert = ({
                   )}
                   {onConfirm && (
                     <TouchableOpacity
-                      style={[styles.button, styles.confirmButton, !onCancel && styles.singleButton]}
+                      style={[styles.button, styles.confirmButton, (!onCancel && type !== 'confirm') && styles.singleButton]}
                       onPress={() => handleClose(onConfirm)}
                       activeOpacity={0.8}
                     >
@@ -113,6 +129,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 5,
+    alignItems: 'center',
+  },
+  icon: {
+    marginBottom: 16,
   },
   title: {
     fontFamily: 'Playfair',
@@ -133,6 +153,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
+    width: '100%',
   },
   button: {
     flex: 1,
@@ -142,9 +163,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   singleButton: {
-    flex: 0,
-    minWidth: 120,
-    alignSelf: 'center',
+    flex: 1,
   },
   cancelButton: {
     backgroundColor: '#F5F3EF',

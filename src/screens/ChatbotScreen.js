@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,77 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Bot, Sparkles, Send } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { chatService } from '../services/chatService';
+import { COLORS } from '../theme/colors';
 
-const MAROON = '#8B1A1A';
 const LIGHT_BG = '#FAFAF7';
-const BORDER_COLOR = '#E8DDD4';
 
 export default function ChatbotScreen() {
   const navigation = useNavigation();
   const [inputText, setInputText] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    const initChat = async () => {
+      try {
+        const userInfo = await AsyncStorage.getItem('userInfo');
+        if (userInfo) {
+          const parsed = JSON.parse(userInfo);
+          if (parsed.nama_lengkap) {
+            setUserName(parsed.nama_lengkap.split(' ')[0]);
+          }
+        }
+        
+        // Load chat history
+        const savedHistory = await AsyncStorage.getItem('chatHistory');
+        if (savedHistory) {
+          setMessages(JSON.parse(savedHistory));
+        }
+      } catch (error) {
+        console.error('Error initializing chatbot:', error);
+      }
+    };
+    initChat();
+  }, []);
+
+  const handleSend = async (textOverride = null) => {
+    const textToSend = typeof textOverride === 'string' ? textOverride : inputText.trim();
+    if (!textToSend || loading) return;
+
+    setInputText('');
+
+    const newUserMsg = { id: Date.now().toString(), role: 'user', text: textToSend };
+    const history = messages.map(m => ({ role: m.role, text: m.text }));
+    
+    const newMessages = [...messages, newUserMsg];
+    setMessages(newMessages);
+    setLoading(true);
+
+    try {
+      const res = await chatService.sendMessage(textToSend, history);
+      let aiText = "Maaf, tidak dapat merespon.";
+      if (res && res.data) {
+        if (typeof res.data === 'string') aiText = res.data;
+        else if (res.data.reply) aiText = res.data.reply;
+        else if (res.data.text) aiText = res.data.text;
+        else if (res.data.message) aiText = res.data.message;
+      }
+      const aiMsg = { id: (Date.now() + 1).toString(), role: 'model', text: aiText };
+      const updatedMessages = [...newMessages, aiMsg];
+      setMessages(updatedMessages);
+      await AsyncStorage.setItem('chatHistory', JSON.stringify(updatedMessages));
+    } catch (error) {
+      const errorMsg = { id: (Date.now() + 1).toString(), role: 'model', text: 'Maaf, terjadi kendala jaringan atau server.' };
+      const updatedMessages = [...newMessages, errorMsg];
+      setMessages(updatedMessages);
+      await AsyncStorage.setItem('chatHistory', JSON.stringify(updatedMessages));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -36,68 +99,75 @@ export default function ChatbotScreen() {
 
       <KeyboardAvoidingView 
         style={styles.container} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           {/* Welcome Section */}
           <View style={styles.welcomeSection}>
             <View style={styles.sparkleIconBox}>
-              <Sparkles size={28} color={MAROON} />
+              <Sparkles size={28} color={COLORS.maroon} />
             </View>
-            <Text style={styles.welcomeTitle}>Rahayu. Bagaimana saya bisa membantu?</Text>
+            <Text style={styles.welcomeTitle}>
+              Rahayu{userName ? `, ${userName}` : ''}. Bagaimana saya bisa membantu?
+            </Text>
             <Text style={styles.welcomeSubtitle}>
               Tanyakan tentang motif, rekomendasi kain untuk acara, atau cek ketersediaan karya tenun Sumba.
             </Text>
           </View>
 
           {/* Suggestion Chips */}
-          <View style={styles.chipsContainer}>
-            <TouchableOpacity style={styles.chip}>
-              <Ionicons name="calendar-outline" size={14} color={MAROON} />
-              <Text style={styles.chipText}>Rekomendasi Acara</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.chip}>
-              <Ionicons name="book-outline" size={14} color={MAROON} />
-              <Text style={styles.chipText}>Arti Motif</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.chip}>
-              <Ionicons name="cube-outline" size={14} color={MAROON} />
-              <Text style={styles.chipText}>Cek Stok</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* User Message */}
-          <View style={styles.userMessageContainer}>
-            <View style={styles.userBubble}>
-              <Text style={styles.userMessageText}>Kain untuk budget 500rb ada?</Text>
+          {messages.length === 0 && (
+            <View style={styles.chipsContainer}>
+              <TouchableOpacity style={styles.chip} onPress={() => handleSend("Rekomendasi Acara")}>
+                <Ionicons name="calendar-outline" size={14} color={COLORS.maroon} />
+                <Text style={styles.chipText}>Rekomendasi Acara</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.chip} onPress={() => handleSend("Apa arti motif Sumba?")}>
+                <Ionicons name="book-outline" size={14} color={COLORS.maroon} />
+                <Text style={styles.chipText}>Arti Motif</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.chip} onPress={() => handleSend("Tolong cek status pesanan terakhir saya")}>
+                <Ionicons name="cube-outline" size={14} color={COLORS.maroon} />
+                <Text style={styles.chipText}>Cek Pesanan</Text>
+              </TouchableOpacity>
             </View>
-          </View>
+          )}
 
-          {/* AI Message */}
-          <View style={styles.aiMessageContainer}>
-            <View style={styles.aiAvatar}>
-              <Bot size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.aiBubble}>
-              <Text style={styles.aiMessageText}>
-                Tentu. Untuk kisaran nilai 500 ribu rupiah, kami merekomendasikan karya tenun berukuran selendang atau syal dengan motif yang lebih kontemporer atau tingkat kerumitan menengah. Ini beberapa pilihan yang tersedia saat ini:
-              </Text>
-              
-              {/* Product Card inside AI Bubble */}
-              <View style={styles.productCard}>
-                <Image 
-                  source={require('../assets/img/hero.jpeg')} 
-                  style={styles.productImage} 
-                  resizeMode="cover" 
-                />
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>Selendang Pahikung Motif Mamuli</Text>
-                  <Text style={styles.productPrice}>Rp 450.000</Text>
+          {/* Dynamic Messages */}
+          {messages.map((msg) => {
+            if (msg.role === 'user') {
+              return (
+                <View key={msg.id} style={styles.userMessageContainer}>
+                  <View style={styles.userBubble}>
+                    <Text style={styles.userMessageText}>{msg.text}</Text>
+                  </View>
                 </View>
+              );
+            } else {
+              return (
+                <View key={msg.id} style={styles.aiMessageContainer}>
+                  <View style={styles.aiAvatar}>
+                    <Bot size={16} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.aiBubble}>
+                    <Text style={styles.aiMessageText}>{msg.text}</Text>
+                  </View>
+                </View>
+              );
+            }
+          })}
+
+          {loading && (
+            <View style={styles.aiMessageContainer}>
+              <View style={styles.aiAvatar}>
+                <Bot size={16} color="#FFFFFF" />
+              </View>
+              <View style={styles.aiBubble}>
+                <Text style={styles.aiMessageText}>Berpikir...</Text>
               </View>
             </View>
-          </View>
+          )}
           
           {/* Spacer */}
           <View style={{ height: 20 }} />
@@ -114,7 +184,7 @@ export default function ChatbotScreen() {
               onChangeText={setInputText}
               multiline
             />
-            <TouchableOpacity style={styles.sendButton} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.sendButton} activeOpacity={0.8} onPress={handleSend} disabled={loading}>
               <Send size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -136,13 +206,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: BORDER_COLOR,
+    borderBottomColor: COLORS.borderColor,
     backgroundColor: '#FAFAF7',
   },
   headerTitle: {
     fontFamily: 'Playfair',
     fontSize: 20,
-    color: MAROON,
+    color: COLORS.maroon,
     letterSpacing: 2,
   },
   backButton: {
@@ -172,7 +242,7 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontFamily: 'Playfair',
     fontSize: 22,
-    color: MAROON,
+    color: COLORS.maroon,
     textAlign: 'center',
     lineHeight: 32,
     marginBottom: 12,
@@ -206,7 +276,7 @@ const styles = StyleSheet.create({
   chipText: {
     fontFamily: 'PoppinsSemiBold',
     fontSize: 12,
-    color: MAROON,
+    color: COLORS.maroon,
   },
   userMessageContainer: {
     flexDirection: 'row',
@@ -236,7 +306,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: MAROON,
+    backgroundColor: COLORS.maroon,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -250,7 +320,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderTopLeftRadius: 4,
     padding: 16,
-    shadowColor: MAROON,
+    shadowColor: COLORS.maroon,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -265,7 +335,7 @@ const styles = StyleSheet.create({
   },
   productCard: {
     borderWidth: 1,
-    borderColor: BORDER_COLOR,
+    borderColor: COLORS.borderColor,
     borderRadius: 8,
     overflow: 'hidden',
   },
@@ -286,14 +356,14 @@ const styles = StyleSheet.create({
   productPrice: {
     fontFamily: 'PoppinsSemiBold',
     fontSize: 12,
-    color: MAROON,
+    color: COLORS.maroon,
   },
   inputContainer: {
     paddingHorizontal: 20,
     paddingVertical: 12,
     backgroundColor: '#FAFAF7',
     borderTopWidth: 1,
-    borderTopColor: BORDER_COLOR,
+    borderTopColor: COLORS.borderColor,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -318,7 +388,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: MAROON,
+    backgroundColor: COLORS.maroon,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,

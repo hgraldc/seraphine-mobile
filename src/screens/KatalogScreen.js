@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,55 +9,34 @@ import {
   StatusBar,
   Dimensions,
   Animated,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Bot } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFormatter } from '../hooks/useFormatter';
+import { categoryService } from '../services/categoryService';
+import { productService } from '../services/productService';
+import Skeleton from '../components/Skeleton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
-// ─── Data Produk ───────────────────────────────────────────────────
-const PRODUCTS = [
-  {
-    id: '1',
-    name: 'Kain Pahikung Sumba - Motif Kuda',
-    category: 'Kain',
-    price: 2500000,
-    badge: 'Pilihan Ukuran Kustom',
-    image: require('../assets/img/hero.jpeg'), // Placeholder
-  },
-  {
-    id: '2',
-    name: 'Tas Selempang Tenun Hinggi',
-    category: 'Tas',
-    price: 850000,
-    badge: null,
-    image: require('../assets/img/hero.jpeg'), // Placeholder
-  },
-  {
-    id: '3',
-    name: 'Kain Hinggi Sumba Klasik',
-    category: 'Kain',
-    price: 3200000,
-    badge: 'Pilihan Ukuran Kustom',
-    image: require('../assets/img/hero.jpeg'), // Placeholder
-  },
-  {
-    id: '4',
-    name: 'Dompet Tenun Motif Sekong',
-    category: 'Aksesori',
-    price: 350000,
-    badge: null,
-    image: require('../assets/img/hero.jpeg'), // Placeholder
-  },
-];
+function ProductSkeleton() {
+  return (
+    <View style={styles.card}>
+      <Skeleton width="100%" height={240} borderRadius={8} />
+      <View style={{ marginTop: 12, paddingHorizontal: 4 }}>
+        <Skeleton width="90%" height={16} />
+        <Skeleton width="50%" height={14} style={{ marginTop: 8 }} />
+      </View>
+    </View>
+  );
+}
 
-const CATEGORIES = ['Semua', 'Kain', 'Tas', 'Aksesori'];
 
-// ─── Product Card ──────────────────────────────────────────────────
+
 const ProductCard = ({ item, onPress, formatRupiah }) => (
   <TouchableOpacity
     style={styles.card}
@@ -65,32 +44,77 @@ const ProductCard = ({ item, onPress, formatRupiah }) => (
     onPress={() => onPress(item)}
   >
     <View style={styles.cardImageWrapper}>
-      <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
-      {item.badge && (
+      {item.gambar ? (
+        <Image source={{ uri: item.gambar }} style={styles.cardImage} resizeMode="cover" />
+      ) : (
+        <View style={[styles.cardImage, { backgroundColor: '#D4C4B8' }]} />
+      )}
+      {item.stok > 0 && (
         <View style={styles.badgeWrapper}>
-          <Ionicons name="resize-outline" size={10} color="#5C1A1A" />
-          <Text style={styles.badgeText}>{item.badge}</Text>
+          <Ionicons name="pricetag-outline" size={10} color="#5C1A1A" />
+          <Text style={styles.badgeText}>Sisa Stok: {item.stok}</Text>
         </View>
       )}
     </View>
     <View style={styles.cardInfo}>
-      <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
-      <Text style={styles.cardPrice}>{formatRupiah(item.price)}</Text>
+      <Text style={styles.cardName} numberOfLines={2}>{item.nama_produk}</Text>
+      <Text style={styles.cardPrice}>{formatRupiah(item.harga)}</Text>
     </View>
   </TouchableOpacity>
 );
 
-// ─── Main KatalogScreen ────────────────────────────────────────────
 export default function KatalogScreen() {
   const navigation = useNavigation();
   const { formatRupiah } = useFormatter();
-  const [activeCategory, setActiveCategory] = useState('Semua');
+  const [activeCategoryId, setActiveCategoryId] = useState('semua');
+  const [categories, setCategories] = useState([{ id_kategori: 'semua', nama_kategori: 'Semua' }]);
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const filteredProducts =
-    activeCategory === 'Semua'
-      ? PRODUCTS
-      : PRODUCTS.filter((p) => p.category === activeCategory);
+  const fetchCategories = async () => {
+    try {
+      const response = await categoryService.getAllCategories();
+      if (response.success && response.data) {
+        setCategories([{ id_kategori: 'semua', nama_kategori: 'Semua' }, ...response.data]);
+      }
+    } catch (error) {
+      console.error("Gagal memuat kategori:", error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      const params = { limit: 10, page: 1 };
+      if (activeCategoryId !== "semua") {
+        params.id_kategori = activeCategoryId;
+      }
+      const response = await productService.getProducts(params);
+      if (response.success && response.data) {
+        setProducts(response.data);
+      }
+    } catch (error) {
+      console.error("Gagal memuat produk:", error);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [activeCategoryId]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchCategories(), fetchProducts()]);
+    setRefreshing(false);
+  };
 
   // Header fade-in saat scroll
   const headerOpacity = scrollY.interpolate({
@@ -104,10 +128,33 @@ export default function KatalogScreen() {
 
   // Render grid 2 kolom
   const renderRows = () => {
+    if (loadingProducts) {
+      return (
+        <View style={{ padding: 20 }}>
+          <View style={styles.productRow}>
+            <ProductSkeleton />
+            <ProductSkeleton />
+          </View>
+          <View style={styles.productRow}>
+            <ProductSkeleton />
+            <ProductSkeleton />
+          </View>
+        </View>
+      );
+    }
+    
+    if (products.length === 0) {
+      return (
+        <View style={{ padding: 20, alignItems: 'center' }}>
+          <Text style={{ fontFamily: 'Poppins', color: '#7A6A65' }}>Belum ada produk di kategori ini.</Text>
+        </View>
+      );
+    }
+
     const rows = [];
-    for (let i = 0; i < filteredProducts.length; i += 2) {
-      const left = filteredProducts[i];
-      const right = filteredProducts[i + 1];
+    for (let i = 0; i < products.length; i += 2) {
+      const left = products[i];
+      const right = products[i + 1];
       rows.push(
         <View key={i} style={styles.productRow}>
           <ProductCard item={left} onPress={handleProductPress} formatRupiah={formatRupiah} />
@@ -141,6 +188,9 @@ export default function KatalogScreen() {
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#5C1A1A"]} />
+        }
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
@@ -162,34 +212,26 @@ export default function KatalogScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryScroll}
         >
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.categoryBtn, activeCategory === cat && styles.categoryBtnActive]}
-              onPress={() => setActiveCategory(cat)}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.categoryBtnText,
-                  activeCategory === cat && styles.categoryBtnTextActive,
-                ]}
+          {categories.map((cat) => {
+            const isActive = activeCategoryId === cat.id_kategori;
+            return (
+              <TouchableOpacity
+                key={cat.id_kategori.toString()}
+                style={[styles.categoryBtn, isActive && styles.categoryBtnActive]}
+                onPress={() => setActiveCategoryId(cat.id_kategori)}
+                activeOpacity={0.8}
               >
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text style={[styles.categoryBtnText, isActive && styles.categoryBtnTextActive]}>
+                  {cat.nama_kategori}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Product Grid */}
         <View style={styles.productGrid}>
-          {filteredProducts.length > 0 ? (
-            renderRows()
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>Belum ada produk di kategori ini.</Text>
-            </View>
-          )}
+          {renderRows()}
         </View>
 
         {/* Spacer agar konten tidak tertutup floating cart */}
@@ -208,7 +250,6 @@ export default function KatalogScreen() {
   );
 }
 
-// ─── Styles ────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -235,7 +276,6 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
 
-  // Hero
   heroSection: {
     alignItems: 'center',
     paddingHorizontal: 28,
@@ -257,7 +297,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Category
   categoryScroll: {
     paddingHorizontal: 16,
     paddingBottom: 4,
@@ -284,7 +323,6 @@ const styles = StyleSheet.create({
     color: '#FAFAF7',
   },
 
-  // Grid
   productGrid: {
     paddingHorizontal: 16,
     paddingTop: 20,
@@ -295,7 +333,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  // Card
   card: {
     width: CARD_WIDTH,
     backgroundColor: '#FFFFFF',
@@ -350,7 +387,6 @@ const styles = StyleSheet.create({
     color: '#5C1A1A',
   },
 
-  // Empty
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
@@ -361,7 +397,6 @@ const styles = StyleSheet.create({
     color: '#9B8A85',
   },
 
-  // Floating AI Button
   floatingAiButton: {
     position: 'absolute',
     bottom: 90,

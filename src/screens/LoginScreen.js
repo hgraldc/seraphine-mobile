@@ -11,32 +11,63 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import axiosInstance from '../services/api';
+import { authService } from '../services/authService';
+import { COLORS } from '../theme/colors';
 
-const MAROON = '#8B1A1A';
 
 export default function LoginScreen() {
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [alertVisible, setAlertVisible] = useState(false);
 
-  const handleSignIn = async () => {
-    // try {
-    //   const response = await axiosInstance.post('/auth/login', { email, password });
-    //   console.log('Login berhasil:', response.data);
-    //   navigation.navigate('MainTabs');
-    // } catch (error) {
-    //   console.error('Login gagal:', error);
-    //   setAlertVisible(true);
-    // }
-
-    // Menggunakan akun dummy sementara
-    if (email === 'dummy@email.com' && password === 'dummy123') {
-      console.log('Login dummy berhasil');
-      navigation.navigate('MainTabs');
+  const validateEmail = (text) => {
+    const cleanText = text.replace(/\s/g, '');
+    setEmail(cleanText);
+    if (!cleanText) {
+      setEmailError('Email tidak boleh kosong');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanText)) {
+      setEmailError('Format email tidak valid (cth: nama@email.com)');
     } else {
-      console.error('Login gagal: Kredensial salah');
+      setEmailError('');
+    }
+  };
+
+  const validatePassword = (text) => {
+    setPassword(text);
+    if (!text) {
+      setPasswordError('Password tidak boleh kosong');
+    } else if (text.length < 6) {
+      setPasswordError('Password minimal 6 karakter');
+    } else {
+      setPasswordError('');
+    }
+  };
+
+  const handleSignIn = async () => {
+    // Cek kembali jika ada field yang kosong saat disubmit
+    if (!email || emailError) {
+      setEmailError(emailError || 'Email tidak boleh kosong');
+      return;
+    }
+    if (!password || passwordError) {
+      setPasswordError(passwordError || 'Password tidak boleh kosong');
+      return;
+    }
+    try {
+      const { success, message } = await authService.login(email, password);
+      
+      if (success) {
+        console.log('Login berhasil:', message);
+        navigation.navigate('MainTabs');
+      } else {
+        console.error('Login gagal: Kredensial salah');
+        setAlertVisible(true);
+      }
+    } catch (error) {
+      console.error('Login gagal:', error);
       setAlertVisible(true);
     }
   };
@@ -67,29 +98,31 @@ export default function LoginScreen() {
         <Text style={styles.loginHeading}>Login to your Account</Text>
 
         {/* Input Email */}
-        <View style={styles.inputWrapper}>
+        <View style={[styles.inputWrapper, emailError ? { borderColor: 'red', borderWidth: 1 } : null]}>
           <TextInput
             style={styles.input}
             placeholder="Email"
             placeholderTextColor="rgba(139,26,26,0.5)"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={validateEmail}
             keyboardType="email-address"
             autoCapitalize="none"
           />
         </View>
+        {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
         {/* Input Password */}
-        <View style={styles.inputWrapper}>
+        <View style={[styles.inputWrapper, passwordError ? { borderColor: 'red', borderWidth: 1 } : null, { marginTop: emailError ? 4 : 16 }]}>
           <TextInput
             style={styles.input}
             placeholder="Password"
             placeholderTextColor="rgba(139,26,26,0.5)"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={validatePassword}
             secureTextEntry
           />
         </View>
+        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
         {/* Tombol Sign In */}
         <TouchableOpacity
@@ -135,6 +168,7 @@ export default function LoginScreen() {
 
         <CustomAlert
           visible={alertVisible}
+          type="error"
           title="Login Gagal"
           message="Email atau password salah."
           onConfirm={() => setAlertVisible(false)}
@@ -160,7 +194,7 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 19,
-    color: MAROON,
+    color: COLORS.maroon,
     fontFamily: 'Playfair',
     textAlign: 'center',
     lineHeight: 26,
@@ -169,37 +203,46 @@ const styles = StyleSheet.create({
     marginTop: 70,
     marginBottom: 24,
     fontSize: 20,
-    color: MAROON,
+    color: COLORS.maroon,
     fontFamily: 'Playfair',
   },
   inputWrapper: {
-    marginBottom: 18,
+    marginBottom: 0,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    fontFamily: 'Poppins',
+    marginTop: 4,
+    marginBottom: 14,
+    alignSelf: 'flex-start',
+    marginLeft: 4,
   },
   input: {
     height: 52,
     borderWidth: 1.5,
-    borderColor: MAROON,
+    borderColor: COLORS.maroon,
     borderRadius: 8,
     paddingHorizontal: 18,
     fontSize: 15,
-    color: MAROON,
+    color: COLORS.maroon,
     backgroundColor: '#FFFFFF',
     fontFamily: 'Playfair',
     // bayangan tipis seperti pada desain
-    shadowColor: MAROON,
+    shadowColor: COLORS.maroon,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.35,
     shadowRadius: 0,
     elevation: 3,
   },
   signInButton: {
-    backgroundColor: MAROON,
+    backgroundColor: COLORS.maroon,
     height: 52,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 6,
-    shadowColor: MAROON,
+    shadowColor: COLORS.maroon,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 0,
@@ -213,7 +256,7 @@ const styles = StyleSheet.create({
   },
   orText: {
     textAlign: 'center',
-    color: MAROON,
+    color: COLORS.maroon,
     fontSize: 13,
     marginTop: 48,
     fontFamily: 'Playfair',
@@ -238,7 +281,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signUpText: {
-    color: MAROON,
+    color: COLORS.maroon,
     fontSize: 14,
     fontFamily: 'Playfair',
     textDecorationLine: 'underline',
