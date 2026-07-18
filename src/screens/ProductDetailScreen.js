@@ -19,6 +19,7 @@ import { productService } from '../services/productService';
 import { cartService } from '../services/cartService';
 import { reviewService } from '../services/reviewService';
 import Skeleton from '../components/Skeleton';
+import CustomAlert from '../components/CustomAlert';
 
 import { COLORS } from '../theme/colors';
 
@@ -46,6 +47,10 @@ export default function ProductDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [reviews, setReviews] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({});
 
   useEffect(() => {
     if (productParam?.id_produk) {
@@ -65,26 +70,49 @@ export default function ProductDetailScreen() {
   };
 
   const handleDeleteReview = (id_review) => {
-    Alert.alert('Hapus Ulasan', 'Apakah Anda yakin ingin menghapus ulasan ini?', [
-      { text: 'Batal', style: 'cancel' },
-      { 
-        text: 'Hapus', 
-        style: 'destructive', 
-        onPress: async () => {
-          try {
-            const res = await reviewService.deleteReview(id_review);
-            if (res.success) {
-              Alert.alert('Berhasil', 'Ulasan berhasil dihapus');
+    setAlertConfig({
+      type: 'confirm',
+      title: 'Hapus Ulasan',
+      message: 'Apakah Anda yakin ingin menghapus ulasan ini?',
+      cancelText: 'Batal',
+      confirmText: 'Hapus',
+      onCancel: () => setAlertVisible(false),
+      onConfirm: async () => {
+        setAlertVisible(false);
+        try {
+          const res = await reviewService.deleteReview(id_review);
+          if (res.success) {
+            setTimeout(() => {
+              setAlertConfig({
+                type: 'success',
+                title: 'Berhasil',
+                message: 'Ulasan berhasil dihapus',
+                confirmText: 'OK',
+                onConfirm: () => setAlertVisible(false),
+                onCancel: null,
+              });
+              setAlertVisible(true);
               if (product?.id_produk) {
                 fetchReviews(product.id_produk);
               }
-            }
-          } catch (error) {
-            Alert.alert('Gagal', 'Gagal menghapus ulasan');
+            }, 300); // slight delay to allow previous modal to close
           }
+        } catch (error) {
+          setTimeout(() => {
+            setAlertConfig({
+              type: 'error',
+              title: 'Gagal',
+              message: 'Gagal menghapus ulasan',
+              confirmText: 'OK',
+              onConfirm: () => setAlertVisible(false),
+              onCancel: null,
+            });
+            setAlertVisible(true);
+          }, 300);
         }
       }
-    ]);
+    });
+    setAlertVisible(true);
   };
 
   const sizes = ['S', 'M', 'L', 'Custom Size'];
@@ -102,16 +130,41 @@ export default function ProductDetailScreen() {
       
       const res = await cartService.addToCart(payload);
       if (res.success) {
-        Alert.alert('Sukses', 'Produk berhasil ditambahkan ke keranjang', [
-          { text: 'OK', style: 'cancel' },
-          { text: 'Lihat Keranjang', onPress: () => navigation.navigate('Cart') }
-        ]);
+        setAlertConfig({
+          type: 'success',
+          title: 'Sukses',
+          message: 'Produk berhasil ditambahkan ke keranjang',
+          cancelText: 'Lanjut Belanja',
+          confirmText: 'Lihat Keranjang',
+          onCancel: () => setAlertVisible(false),
+          onConfirm: () => {
+            setAlertVisible(false);
+            navigation.navigate('MainTabs', { screen: 'Cart' });
+          }
+        });
+        setAlertVisible(true);
       } else {
-        Alert.alert('Gagal', res.message || 'Gagal menambahkan ke keranjang');
+        setAlertConfig({
+          type: 'error',
+          title: 'Gagal',
+          message: res.message || 'Gagal menambahkan ke keranjang',
+          confirmText: 'OK',
+          onConfirm: () => setAlertVisible(false),
+          onCancel: null,
+        });
+        setAlertVisible(true);
       }
     } catch (error) {
       console.error('Error add to cart:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat menambahkan ke keranjang');
+      setAlertConfig({
+        type: 'error',
+        title: 'Error',
+        message: 'Terjadi kesalahan saat menambahkan ke keranjang',
+        confirmText: 'OK',
+        onConfirm: () => setAlertVisible(false),
+        onCancel: null,
+      });
+      setAlertVisible(true);
     } finally {
       setIsAddingToCart(false);
     }
@@ -214,8 +267,8 @@ export default function ProductDetailScreen() {
         
         {/* MAIN IMAGE */}
         <View style={styles.imageContainer}>
-          {product.gambar ? (
-            <Image source={{ uri: product.gambar }} style={styles.mainImage} resizeMode="cover" />
+          {selectedImage || product.gambar ? (
+            <Image source={{ uri: selectedImage || product.gambar }} style={styles.mainImage} resizeMode="cover" />
           ) : (
             <View style={styles.mainImagePlaceholder} />
           )}
@@ -226,20 +279,25 @@ export default function ProductDetailScreen() {
 
         {/* THUMBNAILS */}
         <View style={styles.thumbnailRow}>
-          {[1, 2, 3, 4].map((item, index) => (
-            <TouchableOpacity key={index} style={styles.thumbnailWrapper}>
+          {product.media && product.media.length > 0 ? (
+            product.media.map((item, index) => (
+              <TouchableOpacity 
+                key={item.id_media || index} 
+                style={styles.thumbnailWrapper}
+                onPress={() => setSelectedImage(item.url)}
+              >
+                <Image source={{ uri: item.url }} style={styles.thumbnailImage} resizeMode="cover" />
+              </TouchableOpacity>
+            ))
+          ) : (
+            <TouchableOpacity style={styles.thumbnailWrapper}>
               {product.gambar ? (
                 <Image source={{ uri: product.gambar }} style={styles.thumbnailImage} resizeMode="cover" />
               ) : (
                 <View style={styles.thumbnailPlaceholder} />
               )}
-              {index === 3 && (
-                <View style={styles.playIconOverlay}>
-                  <Ionicons name="play-circle" size={28} color="rgba(255,255,255,0.9)" />
-                </View>
-              )}
             </TouchableOpacity>
-          ))}
+          )}
         </View>
 
         {/* PRODUCT INFO */}
@@ -439,6 +497,17 @@ export default function ProductDetailScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <CustomAlert
+        visible={alertVisible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        cancelText={alertConfig.cancelText}
+        confirmText={alertConfig.confirmText}
+        onCancel={alertConfig.onCancel}
+        onConfirm={alertConfig.onConfirm}
+      />
     </SafeAreaView>
   );
 }
@@ -511,14 +580,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
   thumbnailPlaceholder: {
     flex: 1,
-  },
-  playIconOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   productInfo: {
     paddingHorizontal: 20,

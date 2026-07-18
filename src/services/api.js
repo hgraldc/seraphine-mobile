@@ -35,7 +35,32 @@ axiosInstance.interceptors.request.use(
 );
 
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Helper to auto-inject `gambar` from `media` array so frontend components don't crash or show blank images
+    const injectGambar = (data) => {
+      if (!data || typeof data !== 'object') return;
+      if (Array.isArray(data)) {
+        data.forEach(injectGambar);
+      } else {
+        if (data.media && Array.isArray(data.media) && data.media.length > 0) {
+          const sorted = [...data.media].sort((a, b) => (a.urutan || 0) - (b.urutan || 0));
+          if (!data.gambar && sorted[0] && sorted[0].url) {
+            data.gambar = sorted[0].url;
+          }
+        }
+        Object.values(data).forEach(val => {
+          if (val && typeof val === 'object') {
+            injectGambar(val);
+          }
+        });
+      }
+    };
+
+    if (response.data) {
+      injectGambar(response.data);
+    }
+    return response;
+  },
   async (error) => {
     // Handle global error seperti 401 (Unauthorized)
     if (error.response && error.response.status === 401) {

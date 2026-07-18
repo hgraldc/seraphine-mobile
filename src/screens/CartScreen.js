@@ -19,12 +19,12 @@ import { cartService } from '../services/cartService';
 const TAB_BAR_HEIGHT = 70;
 
 const CartItem = ({ item, onIncrease, onDecrease, onRemove, formatRupiah }) => {
-  const imageUrl = item.produk?.gambar ? { uri: item.produk.gambar } : require('../assets/img/hero.jpeg');
-  
   return (
     <View style={styles.cartItemContainer}>
       <View style={styles.imageWrapper}>
-        <Image source={imageUrl} style={styles.productImage} resizeMode="cover" />
+        {item.produk?.gambar && (
+          <Image source={{ uri: item.produk.gambar }} style={styles.productImage} resizeMode="cover" />
+        )}
       </View>
       <View style={styles.itemDetails}>
         <View style={styles.itemHeader}>
@@ -221,7 +221,7 @@ export default function CartScreen() {
           />
         ))}
 
-        {/* Promo */}
+        {/* Promo (Disembunyikan sementara sesuai request)
         <View style={styles.promoSection}>
           <View style={styles.promoRow}>
             <Ionicons name="pricetag-outline" size={16} color="#8B3A3A" />
@@ -231,6 +231,7 @@ export default function CartScreen() {
             <Text style={styles.promoAddText}>Tambah</Text>
           </TouchableOpacity>
         </View>
+        */}
 
         {/* Summary */}
         <View style={styles.summaryContainer}>

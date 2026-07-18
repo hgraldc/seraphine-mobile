@@ -4,7 +4,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
-import { View } from 'react-native';
+import { View, Text, TextInput } from 'react-native';
+
+// Disable global font scaling to prevent UI from getting too large on devices with custom display size
+if (Text.defaultProps == null) Text.defaultProps = {};
+Text.defaultProps.allowFontScaling = false;
+
+if (TextInput.defaultProps == null) TextInput.defaultProps = {};
+TextInput.defaultProps.allowFontScaling = false;
 import RootNavigation from './navigation/RootNavigation';
 import OrderHistoryScreen from './screens/OrderHistoryScreen';
 import HelpScreen from './screens/HelpScreen';

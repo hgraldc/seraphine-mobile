@@ -195,7 +195,7 @@ export default function AccountScreen() {
         <View style={styles.profileRow}>
           <View style={styles.avatarWrapper}>
             <Image
-              source={require("../assets/img/avatar.png")}
+              source={userData?.foto_profil ? { uri: userData.foto_profil } : require("../assets/img/avatar.png")}
               style={styles.avatar}
               resizeMode="cover"
             />

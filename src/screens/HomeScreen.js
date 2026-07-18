@@ -20,6 +20,7 @@ import { articleService } from "../services/articleService";
 import { useFormatter } from "../hooks/useFormatter";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Skeleton from "../components/Skeleton";
+import { moderateScale, scale, verticalScale } from "../utils/responsive";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PRODUCT_CARD_WIDTH = SCREEN_WIDTH * 0.42;
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
     elevation: 1,         // Android perlu elevation agar zIndex aktif
   },
   greeting: {
-    fontSize: 22,
+    fontSize: moderateScale(22),
     color: "#7B0000",
     fontFamily: "Playfair",
   },
@@ -388,19 +389,19 @@ const styles = StyleSheet.create({
     color: "#3A0000",
   },
   iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: moderateScale(42),
+    height: moderateScale(42),
+    borderRadius: moderateScale(21),
     backgroundColor: "#EEE7DF",
     justifyContent: "center",
     alignItems: "center",
   },
 
   heroContainer: {
-    marginHorizontal: 16,
-    marginTop: 4,
-    height: 300,
-    borderRadius: 24,
+    marginHorizontal: scale(16),
+    marginTop: verticalScale(4),
+    height: verticalScale(300),
+    borderRadius: moderateScale(24),
     overflow: "hidden",
     backgroundColor: "#C5B5A0",
   },
@@ -419,14 +420,14 @@ const styles = StyleSheet.create({
   },
   heroOverlay: {
     position: "absolute",
-    bottom: 26,
-    left: 24,
-    right: 24,
+    bottom: verticalScale(26),
+    left: scale(24),
+    right: scale(24),
   },
   heroTitle: {
-    fontSize: 34,
+    fontSize: moderateScale(34),
     color: "#FFFFFF",
-    lineHeight: 42,
+    lineHeight: moderateScale(42),
     fontFamily: "Playfair",
   },
   heroButton: {
@@ -447,20 +448,20 @@ const styles = StyleSheet.create({
   },
 
   sectionHeader: {
-    marginTop: 28,
-    marginBottom: 14,
-    paddingHorizontal: 20,
+    marginTop: verticalScale(28),
+    marginBottom: verticalScale(14),
+    paddingHorizontal: scale(20),
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: moderateScale(24),
     color: "#7B0000",
     fontFamily: "PlayfairItalic",
   },
   seeAll: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: "#9A8C8C",
     fontFamily: "PoppinsSemiBold",
     letterSpacing: 0.5,
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
     borderColor: "#6B0000",
   },
   categoryChipText: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: "#6E6464",
     fontFamily: "PoppinsMedium",
   },
@@ -499,7 +500,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     color: "#9A8C8C",
     fontFamily: "Poppins",
     textAlign: "center",
@@ -553,14 +554,14 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   productName: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     color: "#3A0000",
     fontFamily: "PoppinsSemiBold",
-    lineHeight: 19,
+    lineHeight: moderateScale(19),
   },
   productPrice: {
-    marginTop: 5,
-    fontSize: 12,
+    marginTop: verticalScale(5),
+    fontSize: moderateScale(12),
     color: "#6E6464",
     fontFamily: "PoppinsMedium",
   },
@@ -593,10 +594,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   blogTitle: {
-    fontSize: 20,
+    fontSize: moderateScale(20),
     color: "#3A0000",
     fontFamily: "Playfair",
-    lineHeight: 26,
+    lineHeight: moderateScale(26),
   },
   blogButton: {
     marginTop: 8,
@@ -606,7 +607,7 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   blogButtonText: {
-    fontSize: 10,
+    fontSize: moderateScale(10),
     color: "#7B0000",
     fontFamily: "PoppinsSemiBold",
     letterSpacing: 1,
