@@ -93,7 +93,7 @@ export default function ChatbotScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top:10, bottom:10, left:10, right:10}} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#5C1A1A" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>ASISTEN AI</Text>
+        <Text style={styles.headerTitle}>ULZA - ASISTEN AI</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -109,7 +109,7 @@ export default function ChatbotScreen() {
               <Sparkles size={28} color={COLORS.maroon} />
             </View>
             <Text style={styles.welcomeTitle}>
-              Rahayu{userName ? `, ${userName}` : ''}. Bagaimana saya bisa membantu?
+              Rahayu{userName ? `, ${userName}` : ''}! Saya Ulza, asisten virtual Seraphine. Ada yang bisa Ulza bantu hari ini?
             </Text>
             <Text style={styles.welcomeSubtitle}>
               Tanyakan tentang motif, rekomendasi kain untuk acara, atau cek ketersediaan karya tenun Sumba.

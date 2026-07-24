@@ -141,7 +141,7 @@ export default function CartScreen() {
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.produk?.harga || item.harga_snapshot) * item.jumlah, 0);
-  const shippingCost = subtotal > 0 ? 75000 : 0;
+  const shippingCost = 0; // Dihitung di halaman checkout
   const total = subtotal + shippingCost;
 
   if (loading) {
@@ -242,7 +242,7 @@ export default function CartScreen() {
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Ongkos Kirim</Text>
-            <Text style={styles.summaryValue}>{formatRupiah(shippingCost)}</Text>
+            <Text style={styles.summaryValue}>Dihitung saat checkout</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryRow}>
@@ -257,7 +257,11 @@ export default function CartScreen() {
         <TouchableOpacity
           style={styles.checkoutBtn}
           activeOpacity={0.85}
-          onPress={() => navigation?.navigate('Checkout', { fromCart: true })}
+          onPress={() => navigation?.navigate('Checkout', { 
+            fromCart: true, 
+            subtotal: subtotal,
+            totalDirectPrice: subtotal
+          })}
         >
           <Ionicons name="lock-closed-outline" size={16} color="#FAFAF7" />
           <Text style={styles.checkoutBtnText}>Lanjut ke Pembayaran</Text>

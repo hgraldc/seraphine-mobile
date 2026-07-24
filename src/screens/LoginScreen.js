@@ -22,6 +22,7 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [alertVisible, setAlertVisible] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const validateEmail = (text) => {
     const cleanText = text.replace(/\s/g, '');
@@ -29,7 +30,7 @@ export default function LoginScreen() {
     if (!cleanText) {
       setEmailError('Email tidak boleh kosong');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanText)) {
-      setEmailError('Format email tidak valid (cth: nama@email.com)');
+      setEmailError('Format email tidak valid');
     } else {
       setEmailError('');
     }
@@ -114,13 +115,20 @@ export default function LoginScreen() {
         {/* Input Password */}
         <View style={[styles.inputWrapper, passwordError ? { borderColor: 'red', borderWidth: 1 } : null, { marginTop: emailError ? 4 : 16 }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { paddingRight: 50 }]}
             placeholder="Password"
             placeholderTextColor="rgba(139,26,26,0.5)"
             value={password}
             onChangeText={validatePassword}
-            secureTextEntry
+            secureTextEntry={!isPasswordVisible}
           />
+          <TouchableOpacity 
+            style={styles.eyeIcon}
+            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            activeOpacity={0.7}
+          >
+            <Icon name={isPasswordVisible ? "eye-slash" : "eye"} size={20} color="rgba(139,26,26,0.6)" />
+          </TouchableOpacity>
         </View>
         {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
@@ -130,7 +138,7 @@ export default function LoginScreen() {
           onPress={handleSignIn}
           activeOpacity={0.85}
         >
-          <Text style={styles.signInButtonText}>Sign In</Text>
+          <Text style={styles.signInButtonText}>Login</Text>
         </TouchableOpacity>
 
         {/* Atau Sign In Dengan */}
@@ -208,6 +216,14 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     marginBottom: 0,
+    justifyContent: 'center',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorText: {
     color: 'red',

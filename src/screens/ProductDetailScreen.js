@@ -18,6 +18,7 @@ import { useFormatter } from '../hooks/useFormatter';
 import { productService } from '../services/productService';
 import { cartService } from '../services/cartService';
 import { reviewService } from '../services/reviewService';
+import { wishlistService } from '../services/wishlistService';
 import Skeleton from '../components/Skeleton';
 import CustomAlert from '../components/CustomAlert';
 
@@ -48,6 +49,8 @@ export default function ProductDetailScreen() {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isWishlistLoading, setIsWishlistLoading] = useState(false);
 
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState({});
@@ -170,6 +173,30 @@ export default function ProductDetailScreen() {
     }
   };
 
+  const handleToggleWishlist = async () => {
+    if (!product || isWishlistLoading) return;
+    try {
+      setIsWishlistLoading(true);
+      const res = await wishlistService.toggleWishlist(product.id_produk);
+      if (res.success) {
+        setIsWishlisted(!isWishlisted);
+      }
+    } catch (error) {
+      console.error('Error toggling wishlist:', error);
+      setAlertConfig({
+        type: 'error',
+        title: 'Gagal',
+        message: 'Gagal mengubah wishlist',
+        confirmText: 'OK',
+        onConfirm: () => setAlertVisible(false),
+        onCancel: null,
+      });
+      setAlertVisible(true);
+    } finally {
+      setIsWishlistLoading(false);
+    }
+  };
+
   const handleBeliLangsung = () => {
     if (!product) return;
 
@@ -202,6 +229,17 @@ export default function ProductDetailScreen() {
           if (response.success && response.data) {
             setProduct(response.data);
           }
+          
+          try {
+            const wlRes = await wishlistService.getWishlist();
+            if (wlRes.success && wlRes.data) {
+              const found = wlRes.data.find(item => item.id_produk === productParam.id_produk || (item.produk && item.produk.id_produk === productParam.id_produk));
+              setIsWishlisted(!!found);
+            }
+          } catch (e) {
+            console.log('User might not be logged in or wishlist error', e);
+          }
+
         } catch (error) {
           console.error("Failed to load product details", error);
         } finally {
@@ -304,8 +342,12 @@ export default function ProductDetailScreen() {
         <View style={styles.productInfo}>
           <View style={styles.titleRow}>
             <Text style={styles.productTitle}>{product.nama_produk}</Text>
-            <TouchableOpacity hitSlop={{top:10, bottom:10, left:10, right:10}}>
-              <Ionicons name="heart-outline" size={26} color={TEXT_DARK} />
+            <TouchableOpacity onPress={handleToggleWishlist} disabled={isWishlistLoading} hitSlop={{top:10, bottom:10, left:10, right:10}}>
+              {isWishlistLoading ? (
+                <ActivityIndicator size="small" color={MAROON} />
+              ) : (
+                <Ionicons name={isWishlisted ? "heart" : "heart-outline"} size={26} color={isWishlisted ? MAROON : TEXT_DARK} />
+              )}
             </TouchableOpacity>
           </View>
           <Text style={styles.productPrice}>{formatRupiah(product.harga)}</Text>

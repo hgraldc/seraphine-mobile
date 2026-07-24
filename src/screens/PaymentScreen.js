@@ -31,8 +31,7 @@ export default function PaymentScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
 
-  // For demonstration, we simulate proof of payment URL
-  const [proofUri, setProofUri] = useState('https://storage.supabase.co/bukti/mock_bukti.jpg');
+
 
   const handleSubmit = async () => {
     if (!paymentMethod) {
@@ -51,8 +50,6 @@ export default function PaymentScreen() {
       const payload = {
         id_pesanan: orderId,
         metode: paymentMethod,
-        bukti: proofUri,
-        jumlah: totalAmount,
       };
 
       const res = await paymentService.submitPayment(payload);
@@ -103,20 +100,11 @@ export default function PaymentScreen() {
         <Text style={[styles.label, { marginTop: 24 }]}>Metode Pembayaran</Text>
         <TextInput
           style={styles.input}
-          placeholder="Contoh: Transfer Bank Mandiri"
+          placeholder="Contoh: QRIS"
           placeholderTextColor="#A99B95"
           value={paymentMethod}
           onChangeText={setPaymentMethod}
         />
-
-        <Text style={[styles.label, { marginTop: 24 }]}>Bukti Pembayaran</Text>
-        <View style={styles.proofContainer}>
-          <Ionicons name="image-outline" size={40} color={TEXT_GREY} />
-          <Text style={styles.proofText}>
-            Simulasi Gambar Bukti Transfer (Otomatis menggunakan URL mock)
-          </Text>
-        </View>
-
       </ScrollView>
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom > 0 ? insets.bottom : 20 }]}>

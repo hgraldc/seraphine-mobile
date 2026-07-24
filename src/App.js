@@ -28,6 +28,8 @@ import AddReviewScreen from './screens/AddReviewScreen';
 import ArticleDetailScreen from './screens/ArticleDetailScreen';
 import ArticleListScreen from './screens/ArticleListScreen';
 import WeaverDetailScreen from './screens/WeaverDetailScreen';
+import WishlistScreen from './screens/WishlistScreen';
+import SearchScreen from './screens/SearchScreen';
 import { navigationRef } from './navigation/navigationRef';
 
 // Keep the splash screen visible while we fetch resources
@@ -92,6 +94,8 @@ export default function App() {
           <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
           <Stack.Screen name="ArticleList" component={ArticleListScreen} />
           <Stack.Screen name="WeaverDetail" component={WeaverDetailScreen} />
+          <Stack.Screen name="Wishlist" component={WishlistScreen} />
+          <Stack.Screen name="Search" component={SearchScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </View>

@@ -34,6 +34,7 @@ export default function OrderDetailScreen() {
   const { orderId } = route.params || {};
 
   const [order, setOrder] = useState(null);
+  const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [canceling, setCanceling] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
@@ -51,9 +52,24 @@ export default function OrderDetailScreen() {
     }
   };
 
+  const fetchPayment = async () => {
+    try {
+      // Import paymentService must be added at top, which we'll do in another replace if it's missing.
+      // Wait, let's verify if paymentService is imported first.
+      const res = await require('../services/paymentService').paymentService.getPaymentByOrderId(orderId);
+      if (res.success && res.data) {
+        setPayment(res.data);
+      }
+    } catch (error) {
+      // It's okay if payment is not found (e.g. not paid yet)
+      console.log('Payment detail not found or error:', error);
+    }
+  };
+
   useEffect(() => {
     if (orderId) {
       fetchDetail();
+      fetchPayment();
     }
   }, [orderId]);
 
@@ -232,6 +248,25 @@ export default function OrderDetailScreen() {
             <Text style={styles.totalValue}>{formatRupiah(order.total_harga)}</Text>
           </View>
         </View>
+        
+        <View style={styles.divider} />
+
+        {/* INFO PEMBAYARAN (JIKA ADA) */}
+        {payment && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>INFO PEMBAYARAN (MIDTRANS)</Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Metode Pembayaran</Text>
+              <Text style={styles.summaryValue}>{payment.metode || '-'}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Status Pembayaran</Text>
+              <Text style={[styles.summaryValue, { color: payment.status === 'settlement' || payment.status === 'success' ? '#2E7D32' : MAROON }]}>
+                {payment.status ? payment.status.toUpperCase() : 'PENDING'}
+              </Text>
+            </View>
+          </View>
+        )}
 
       </ScrollView>
 

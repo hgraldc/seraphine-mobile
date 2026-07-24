@@ -11,7 +11,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search } from "lucide-react-native";
+import { Search, Heart } from "lucide-react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { categoryService } from "../services/categoryService";
 import { productService } from "../services/productService";
@@ -173,14 +173,24 @@ export default function HomeScreen() {
           Welcome Back,{" "}
           <Text style={styles.greetingBold}>{userName}</Text>
         </Text>
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => navigation?.navigate("Search")}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Search color="#3A0000" size={20} strokeWidth={2} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation?.navigate("Wishlist")}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Heart color="#3A0000" size={20} strokeWidth={2} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => navigation?.navigate("Search")}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Search color="#3A0000" size={20} strokeWidth={2} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView

@@ -29,6 +29,12 @@ const MENU_ITEMS = [
     screen: "OrderHistory",
   },
   {
+    id: "wishlist",
+    icon: "heart-outline",
+    label: "Favorit Saya",
+    screen: "Wishlist",
+  },
+  {
     id: "2",
     icon: "location-outline",
     label: "Informasi Alamat",

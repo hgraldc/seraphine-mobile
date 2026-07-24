@@ -176,12 +176,20 @@ export default function KatalogScreen() {
       {/* Top bar */}
       <View style={styles.topBar}>
         <Text style={styles.brandName}>CD Seraphine</Text>
-        <TouchableOpacity 
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          onPress={() => navigation.navigate('Notification')}
-        >
-          <Ionicons name="notifications-outline" size={22} color="#2C0A0A" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <TouchableOpacity 
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => navigation.navigate('Wishlist')}
+          >
+            <Ionicons name="heart-outline" size={22} color="#2C0A0A" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => navigation.navigate('Notification')}
+          >
+            <Ionicons name="notifications-outline" size={22} color="#2C0A0A" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Scroll content */}

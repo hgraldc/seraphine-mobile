@@ -41,10 +41,12 @@ export default function CheckoutScreen() {
         payload = {
           dari_keranjang: true,
           ongkir: ONGKIR,
-          catatan: catatan
+          catatan: catatan,
+          metode_pembayaran: 'BANK_TRANSFER'
         };
       } else {
         payload = {
+          dari_keranjang: false,
           items: directBuyItems.map(item => {
             const baseItem = {
               id_produk: item.id_produk,
@@ -58,7 +60,8 @@ export default function CheckoutScreen() {
             return baseItem;
           }),
           ongkir: ONGKIR,
-          catatan: catatan
+          catatan: catatan,
+          metode_pembayaran: 'BANK_TRANSFER'
         };
       }
 
@@ -144,7 +147,7 @@ export default function CheckoutScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Total Belanja</Text>
               <Text style={styles.summaryValue}>
-                {fromCart ? '(Dihitung otomatis dari Keranjang)' : formatRupiah(totalDirectPrice)}
+                {formatRupiah(totalDirectPrice)}
               </Text>
             </View>
             <View style={styles.summaryRow}>
@@ -155,7 +158,7 @@ export default function CheckoutScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.totalLabel}>Total Pembayaran</Text>
               <Text style={styles.totalValue}>
-                {fromCart ? '(Dihitung otomatis)' : formatRupiah(totalDirectPrice + ONGKIR)}
+                {formatRupiah(totalDirectPrice + ONGKIR)}
               </Text>
             </View>
           </View>
