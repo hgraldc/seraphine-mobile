@@ -67,10 +67,11 @@ export default function WishlistScreen() {
       setLoading(true);
       const res = await wishlistService.getWishlist();
       if (res && res.success) {
-        // Asumsi data array of product ada di res.data
-        // Jika response API mengembalikan produk di dalam properti produk, sesuaikan struktur mappingnya.
-        // Berdasarkan endpoint umumnya akan mengembalikan daftar produk.
-        setWishlist(res.data || []);
+        // Ekstrak objek 'produk' dari setiap item wishlist
+        const formattedData = (res.data || [])
+          .filter(item => item.produk)
+          .map(item => item.produk);
+        setWishlist(formattedData);
       }
     } catch (error) {
       console.error("Gagal memuat wishlist:", error);
