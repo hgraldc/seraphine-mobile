@@ -211,7 +211,10 @@ export default function HomeScreen() {
             <Text style={styles.heroTitle}>
               Warisan Budaya{"\n"}dalam Setiap Helai
             </Text>
-            <TouchableOpacity style={styles.heroButton}>
+            <TouchableOpacity 
+              style={styles.heroButton}
+              onPress={() => navigation.navigate("Catalog")}
+            >
               <Text style={styles.heroButtonText}>JELAJAHI KOLEKSI</Text>
             </TouchableOpacity>
           </View>

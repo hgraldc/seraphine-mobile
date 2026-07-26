@@ -15,39 +15,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 const TAB_BAR_HEIGHT = 70;
 
-const HELP_CATEGORIES = [
-  {
-    id: '1',
-    icon: 'card-outline',
-    title: 'Pembayaran & Pesanan',
-    desc: 'Informasi metode pembayaran, konfirmasi, dan pelacakan pesanan.',
-    screen: 'HelpDetail',
-    params: { topic: 'Pembayaran & Pesanan' },
-  },
-  {
-    id: '2',
-    icon: 'car-outline',
-    title: 'Pengiriman',
-    desc: 'Estimasi waktu tiba, biaya pengiriman, dan kebijakan retur.',
-    screen: 'HelpDetail',
-    params: { topic: 'Pengiriman' },
-  },
-  {
-    id: '3',
-    icon: 'resize-outline',
-    title: 'Custom Size & Motif',
-    desc: 'Panduan pengukuran kustom dan permintaan motif khusus.',
-    screen: 'HelpDetail',
-    params: { topic: 'Custom Size & Motif' },
-  },
-];
-
 const FAQS = [
   {
     id: '1',
     question: 'Bagaimana cara merawat kain tenun Sumba?',
     answer:
-      'Cuci tangan dengan air dingin menggunakan sabun lembut. Jangan diperas terlalu kencang dan hindari paparan sinar matahari langsung saat menjemur. Simpan dalam wadah tertutup untuk menjaga warna dan serat kain.',
+      'Cara merawat kain tenun Sumba yang benar adalah dengan tidak sering mencucinya, cukup diangin-anginkan setelah dipakai, serta dihindarkan dari paparan sinar matahari langsung.',
   },
   {
     id: '2',
@@ -59,7 +32,7 @@ const FAQS = [
     id: '3',
     question: 'Apakah Sumba Tenun melayani pengiriman internasional?',
     answer:
-      'Ya, kami melayani pengiriman ke seluruh dunia melalui jasa ekspedisi terpercaya. Biaya dan estimasi pengiriman internasional akan dihitung saat checkout berdasarkan negara tujuan.',
+      'Mohon maaf, saat ini kami hanya melayani pengiriman ke seluruh wilayah di Indonesia. Kami belum dapat melayani pengiriman ke luar negeri (internasional).',
   },
 ];
 
@@ -89,10 +62,25 @@ function FaqItem({ item }) {
 export default function HelpScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [searchQuery, setSearchQuery] = useState('');
 
-  const handleCS = () => {
-    Linking.openURL('https://wa.me/6281234567890');
+  const handleCS = async () => {
+    const phoneNumber = "6282236555863";
+    const message = "Halo, saya butuh bantuan terkait aplikasi Sumba Tenun.";
+    const whatsappScheme = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+
+    try {
+      const supported = await Linking.canOpenURL(whatsappScheme);
+      if (supported) {
+        await Linking.openURL(whatsappScheme); // langsung buka aplikasi WhatsApp
+      } else {
+        // fallback ke web jika WhatsApp tidak terinstall
+        const webUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+        await Linking.openURL(webUrl);
+      }
+    } catch (error) {
+      console.error("Gagal membuka WhatsApp:", error);
+      alert("Terjadi kesalahan saat mencoba membuka WhatsApp.");
+    }
   };
 
   return (
@@ -129,41 +117,6 @@ export default function HelpScreen() {
         <Text style={styles.pageSubtitle}>
           Temukan jawaban untuk pertanyaan Anda mengenai proses, perawatan, dan koleksi Sumba Tenun.
         </Text>
-
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={18} color="#9B8A85" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Cari topik bantuan (contoh: ukuran kustom)..."
-            placeholderTextColor="#B0A09A"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={16} color="#9B8A85" />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Kategori */}
-        <View style={styles.categoriesContainer}>
-          {HELP_CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              style={styles.categoryCard}
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate(cat.screen, cat.params)}
-            >
-              <View style={styles.categoryIconWrapper}>
-                <Ionicons name={cat.icon} size={24} color="#5C1A1A" />
-              </View>
-              <Text style={styles.categoryTitle}>{cat.title}</Text>
-              <Text style={styles.categoryDesc}>{cat.desc}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
 
         {/* FAQ */}
         <Text style={styles.sectionTitle}>Pertanyaan Populer</Text>
@@ -243,62 +196,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
-  },
-
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E8DDD4',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-    marginBottom: 28,
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: 'Poppins',
-    fontSize: 13,
-    color: '#2C0A0A',
-    padding: 0,
-  },
-
-  categoriesContainer: {
-    gap: 12,
-    marginBottom: 32,
-  },
-  categoryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 18,
-    shadowColor: '#2C0A0A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  categoryIconWrapper: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: '#F5EDE5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  categoryTitle: {
-    fontFamily: 'PoppinsSemiBold',
-    fontSize: 14,
-    color: '#2C0A0A',
-    marginBottom: 6,
-  },
-  categoryDesc: {
-    fontFamily: 'Poppins',
-    fontSize: 13,
-    color: '#7A6A65',
-    lineHeight: 19,
   },
 
   sectionTitle: {

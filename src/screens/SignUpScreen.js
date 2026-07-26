@@ -174,7 +174,7 @@ export default function SignUpScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView 
@@ -386,6 +386,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 8,
     backgroundColor: 'rgba(255, 234, 234, 0.4)',
+    zIndex: 1,
   },
   errorText: {
     color: 'red',

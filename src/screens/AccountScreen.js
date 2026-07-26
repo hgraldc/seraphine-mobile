@@ -34,41 +34,31 @@ const MENU_ITEMS = [
     label: "Favorit Saya",
     screen: "Wishlist",
   },
-  {
-    id: "2",
-    icon: "location-outline",
-    label: "Informasi Alamat",
-    screen: "Address",
-  },
-  {
-    id: "3",
-    icon: "card-outline",
-    label: "Metode Pembayaran",
-    screen: "Payment",
-  },
+  // {
+  //   id: "2",
+  //   icon: "location-outline",
+  //   label: "Informasi Alamat",
+  //   screen: "Address",
+  // },
+  // {
+  //   id: "3",
+  //   icon: "card-outline",
+  //   label: "Metode Pembayaran",
+  //   screen: "Payment",
+  // },
   {
     id: "4",
     icon: "help-circle-outline",
     label: "Pusat Bantuan",
     screen: "Help",
   },
-  {
-    id: "5",
-    icon: "information-circle-outline",
-    label: "Tentang Balai Sumba",
-    screen: "About",
-  },
+  // {
+  //   id: "5",
+  //   icon: "information-circle-outline",
+  //   label: "Tentang Balai Sumba",
+  //   screen: "About",
+  // },
 ];
-
-const ImpactStat = ({ value, label, showDivider }) => (
-  <>
-    <View style={styles.statRow}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-    {showDivider && <View style={styles.statDivider} />}
-  </>
-);
 
 export default function AccountScreen() {
   const navigation = useNavigation();
@@ -185,7 +175,10 @@ export default function AccountScreen() {
       {/* Top Bar */}
       <View style={styles.topBar}>
         <Text style={styles.brandName}>SUMBA HERITAGE</Text>
-        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity 
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={() => navigation.navigate('Cart')}
+        >
           <Ionicons name="bag-outline" size={22} color="#2C0A0A" />
         </TouchableOpacity>
       </View>
@@ -195,7 +188,7 @@ export default function AccountScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Page Title */}
-        <Text style={styles.pageTitle}>Profil &amp; Impact</Text>
+        <Text style={styles.pageTitle}>Profil</Text>
 
         {/* Profile Card */}
         <View style={styles.profileRow}>
@@ -219,30 +212,6 @@ export default function AccountScreen() {
           <TouchableOpacity onPress={handleOpenEdit} style={styles.editBtn}>
             <Ionicons name="pencil" size={18} color="#5C1A1A" />
           </TouchableOpacity>
-        </View>
-
-        {/* Dampak Sosial Card */}
-        <View style={styles.impactCard}>
-          <View style={styles.impactHeader}>
-            <Text style={styles.impactTitle}>Dampak Sosial Anda</Text>
-            <Ionicons
-              name="leaf-outline"
-              size={20}
-              color="rgba(255,255,255,0.7)"
-            />
-          </View>
-
-          <ImpactStat value="3" label="KAIN TERBELI" showDivider />
-          <ImpactStat value="2" label="PERAJIN TERBANTU" showDivider />
-          <ImpactStat
-            value={
-              <Text style={styles.statValue}>
-                1.5<Text style={styles.statUnit}>jt</Text>
-              </Text>
-            }
-            label="KONTRIBUSI (RP)"
-            showDivider={false}
-          />
         </View>
 
         {/* Menu List */}
@@ -458,51 +427,6 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: '#E8DDD4',
     borderRadius: 20,
-  },
-
-  impactCard: {
-    backgroundColor: "#6B0000",
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 28,
-  },
-  impactHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  impactTitle: {
-    fontFamily: "Playfair",
-    fontSize: 18,
-    color: "#FFFFFF",
-    letterSpacing: 0.2,
-  },
-  statRow: {
-    paddingVertical: 14,
-  },
-  statValue: {
-    fontFamily: "Playfair",
-    fontSize: 36,
-    color: "#FFFFFF",
-    lineHeight: 40,
-  },
-  statUnit: {
-    fontFamily: "Playfair",
-    fontSize: 20,
-    color: "#FFFFFF",
-  },
-  statLabel: {
-    fontFamily: "PoppinsMedium",
-    fontSize: 10,
-    color: "rgba(255,255,255,0.6)",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    marginTop: 2,
-  },
-  statDivider: {
-    height: 0.5,
-    backgroundColor: "rgba(255,255,255,0.2)",
   },
 
   menuContainer: {

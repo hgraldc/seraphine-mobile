@@ -11,6 +11,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFormatter } from '../hooks/useFormatter';
 import { orderService } from '../services/orderService';
 import CustomAlert from '../components/CustomAlert';
@@ -28,6 +29,30 @@ export default function CheckoutScreen() {
   const [catatan, setCatatan] = useState('');
   const [loading, setLoading] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
+  const [addressInfo, setAddressInfo] = useState({
+    alamat: 'Belum diisi',
+    detail: 'Harap isi alamat Anda di halaman profil.'
+  });
+
+  React.useEffect(() => {
+    const fetchAddress = async () => {
+      try {
+        const cachedUser = await AsyncStorage.getItem("userInfo");
+        if (cachedUser) {
+          const user = JSON.parse(cachedUser);
+          if (user.alamat) {
+            setAddressInfo({
+              alamat: 'Alamat Utama',
+              detail: `${user.alamat}, ${user.kota || ''}, ${user.provinsi || ''} ${user.kode_pos || ''}`.replace(/,\s*,/g, ',')
+            });
+          }
+        }
+      } catch (err) {
+        console.log('Error fetching user info for checkout:', err);
+      }
+    };
+    fetchAddress();
+  }, []);
 
   // Default ongkir disetel ke 0 (gratis ongkir) sesuai panduan backend
   // Nantinya bisa diganti dengan state hasil perhitungan dari API ekspedisi (misal: RajaOngkir)
@@ -111,10 +136,10 @@ export default function CheckoutScreen() {
             <View style={styles.cardRow}>
               <Ionicons name="location-outline" size={20} color={COLORS.maroon} />
               <View style={styles.cardTextContainer}>
-                <Text style={styles.cardTitle}>Alamat Utama</Text>
-                <Text style={styles.cardDesc}>Jl. Tenun Indah No. 12, Sumba Timur, Nusa Tenggara Timur</Text>
+                <Text style={styles.cardTitle}>{addressInfo.alamat}</Text>
+                <Text style={styles.cardDesc}>{addressInfo.detail}</Text>
               </View>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Account' })}>
                 <Text style={styles.editText}>Ubah</Text>
               </TouchableOpacity>
             </View>
